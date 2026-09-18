@@ -6,6 +6,7 @@
     <title>WhatsApp</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', Arial, sans-serif; }
         body {
@@ -189,7 +190,15 @@
 }
 .send-btn:hover { background: #008069; }
 
-        .three-dot-menu { display: none; position: absolute; top: 50px; right: 10px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border-radius: 5px; width: 250px; z-index: 1500; }
+        .chat-menu{position:fixed;top:80px;right:calc(50vw - 210px + 20px);background:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.25);border-radius:8px;width:230px;z-index:1600;display:none;padding:8px 0;}
+.chat-menu.active{display:block;}
+.chat-menu .menu-item{padding:12px 20px;font-size:15px;color:#111b21;cursor:pointer;}
+.chat-menu .menu-item:hover{background:#f5f6f6;}
+.new-group-screen,.contact-info-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2500;display:none;overflow-y:auto;padding-bottom:40px;}
+.new-group-screen.active,.contact-info-screen.active{display:block;}
+.contact-list-item.selected{background:#e7fce3;}
+.contact-list-item.selected::after{content:"✓";margin-left:auto;color:#00a884;font-weight:bold;}
+.three-dot-menu { display: none; position: absolute; top: 50px; right: 10px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border-radius: 5px; width: 250px; z-index: 1500; }
         .menu-item { padding: 15px 20px; font-size: 15px; color: #111b21; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
         .menu-item:hover { background: #f5f6f6; }
         .menu-item i { margin-right: 15px; color: #54656f; }
@@ -413,6 +422,213 @@
     display: flex; align-items: center; justify-content: center;
 }
 .camera-cancel:hover, .camera-switch:hover { background: rgba(255,255,255,0.3); }
+/* ============ DRAWER DOT ============ */
+.settings-dot {
+    display: inline-block;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #25d366; margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* ============ SETTINGS SCREEN ============ */
+.settings-screen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #fff;
+    z-index: 4000;
+    display: none;
+    overflow: hidden;
+}
+.settings-screen.active { display: block; }
+
+.settings-page {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    background: #fff;
+    display: none;
+    padding-bottom: 40px;
+}
+.settings-page.active { display: block; }
+
+.settings-topbar {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    gap: 15px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 2;
+}
+.settings-topbar i {
+    font-size: 22px;
+    color: #111b21;
+    cursor: pointer;
+}
+.settings-title {
+    flex-grow: 1;
+    font-size: 20px;
+    font-weight: 600;
+    color: #111b21;
+}
+.settings-topbar-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 22px;
+}
+
+/* Profile header */
+.settings-profile {
+    text-align: center;
+    padding: 15px 20px 30px;
+}
+.settings-avatar {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: #00a884;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    margin: 0 auto 15px;
+    overflow: hidden;
+    cursor: pointer;
+}
+.settings-avatar img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+}
+.settings-name {
+    font-size: 24px;
+    font-weight: 500;
+    color: #111b21;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* List */
+.settings-list {
+    border-top: 1px solid #f0f2f5;
+    border-bottom: 1px solid #f0f2f5;
+    margin-bottom: 12px;
+    background: #fff;
+}
+.settings-list:first-of-type { margin-top: 8px; }
+
+.settings-section-title {
+    padding: 15px 20px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #00a884;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    gap: 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f2f5;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row:active { background: #f5f6f6; }
+
+.settings-icon {
+    width: 26px;
+    display: flex;
+    justify-content: center;
+    font-size: 20px;
+    color: #54656f;
+    flex-shrink: 0;
+}
+.settings-icon.premium { color: #00a884; }
+.settings-icon.danger { color: #e74c3c; }
+
+.settings-row-text {
+    flex-grow: 1;
+    font-size: 16px;
+    color: #111b21;
+    line-height: 1.35;
+}
+.settings-row-text.danger { color: #e74c3c; }
+.settings-sub {
+    font-size: 13px;
+    color: #667781;
+    font-weight: 400;
+}
+
+.settings-row-right {
+    font-size: 14px;
+    color: #667781;
+}
+
+.settings-badge-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #25d366;
+}
+
+/* Toggle switches */
+.toggle {
+    width: 44px; height: 26px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.toggle i {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: white;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.toggle.on { background: #00a884; justify-content: flex-end; color: #00a884; }
+.toggle.off { background: #bec3c8; justify-content: flex-start; color: #bec3c8; }
+
+/* CTA button */
+.settings-cta {
+    display: block;
+    margin: 20px auto;
+    width: 90%;
+    max-width: 340px;
+    padding: 14px;
+    background: #00a884;
+    color: white;
+    border: none;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.settings-cta:hover { background: #008069; }
+
+/* Appearance previews */
+.theme-preview {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #efeae2 50%, #d9fdd3 50%);
+}
+.app-icon-preview {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #25d366 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.4 5L2 22l5-1.4c1.5.9 3.2 1.4 5 1.4 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>') center/70% no-repeat;
+}
+.theme-circle {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #d9fdd3;
+}
 </style>
 </head>
 <body>
@@ -427,6 +643,8 @@
         <input type="text" id="authName" placeholder="Your name" style="display:none">
         <input type="password" id="authPassword" placeholder="Password">
         <button id="authBtn" onclick="doAuth()">Sign in</button>
+<div id="g_id_onload" data-client_id="399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+<div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left" style="margin-top:14px;display:flex;justify-content:center;"></div>
         <div class="auth-switch">
             <span id="authSwitchText">Don't have an account?</span>
             <a onclick="toggleAuthMode()" id="authSwitchBtn">Sign up</a>
@@ -435,11 +653,60 @@
 </div>
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
 <div class="app-container">
-    <div class="three-dot-menu" id="threeDotMenu">
-        <div class="menu-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
-        <div class="menu-item" onclick="workInProgress('Wi-Fi Connection')"><i class="fas fa-wifi"></i> Wi-Fi Connection</div>
-        <div class="menu-item" onclick="workInProgress('Bluetooth Connection')"><i class="fab fa-bluetooth"></i> Bluetooth Connection</div>
-        <div class="menu-item" onclick="workInProgress('Offline Use')"><i class="fas fa-plane"></i> Offline Use</div>
+       <div class="chat-menu" id="chatMenu">
+<div class="menu-item" onclick="closeChatMenu();openContactInfo()">Contact info</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Search in chat')">Search</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Select messages')">Select messages</div>
+<div class="menu-item" onclick="closeChatMenu();toggleMuteChat()" id="muteMenuItem">Mute notifications</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Disappearing messages')">Disappearing messages</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Add to Favorites')">Add to Favorites</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Add to list')">Add to list</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Export chat')">Export chat</div>
+<div class="menu-item" onclick="closeChatMenu();closeChatWindow()">Close chat</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Send call link')">Send call link</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('New group call')">New group call</div>
+<div class="menu-item" onclick="closeChatMenu();workInProgress('Report')">Report</div>
+<div class="menu-item" onclick="closeChatMenu();blockContact()">Block</div>
+<div class="menu-item" onclick="closeChatMenu();clearChat()">Clear chat</div>
+<div class="menu-item" onclick="closeChatMenu();deleteChat()">Delete chat</div>
+</div>
+<div class="new-group-screen" id="newGroupScreen">
+<div class="select-header"><i class="fas fa-arrow-left" onclick="closeNewGroupScreen()"></i><div>New group</div></div>
+<div style="padding:20px;"><input type="text" id="groupName" placeholder="Group name" style="width:100%;padding:14px;border:1px solid #ddd;border-radius:8px;font-size:16px;"></div>
+<div class="contact-header">Select members</div>
+<div id="groupContactList"></div>
+<button class="settings-cta" onclick="createGroupFromScreen()">Create group</button>
+</div>
+
+<div class="contact-info-screen" id="contactInfoScreen">
+<div class="select-header"><i class="fas fa-arrow-left" onclick="closeContactInfo()"></i><div>Contact info</div></div>
+<div style="text-align:center;padding:25px;">
+<div class="avatar" id="ciAvatar" style="width:130px;height:130px;margin:0 auto 15px;font-size:50px;background:#00a884;"></div>
+<div id="ciName" style="font-size:24px;font-weight:500;color:#111b21;"></div>
+<div id="ciId" style="color:#667781;font-size:14px;margin-top:6px;"></div>
+</div>
+<div class="settings-list">
+<div class="settings-row" onclick="startVoiceCall()"><div class="settings-icon"><i class="fas fa-phone-alt"></i></div><div class="settings-row-text">Audio</div></div>
+<div class="settings-row" onclick="startVideoCall()"><div class="settings-icon"><i class="fas fa-video"></i></div><div class="settings-row-text">Video</div></div>
+<div class="settings-row" onclick="workInProgress('Search')"><div class="settings-icon"><i class="fas fa-search"></i></div><div class="settings-row-text">Search</div></div>
+<div class="settings-row" onclick="workInProgress('Media')"><div class="settings-icon"><i class="fas fa-image"></i></div><div class="settings-row-text">Media, links, and docs</div></div>
+</div>
+<div class="settings-list">
+<div class="settings-row" onclick="workInProgress('Mute')"><div class="settings-icon"><i class="fas fa-bell-slash"></i></div><div class="settings-row-text">Mute notifications</div></div>
+<div class="settings-row" onclick="blockContact()"><div class="settings-icon" style="color:#e74c3c;"><i class="fas fa-ban"></i></div><div class="settings-row-text" style="color:#e74c3c;">Block</div></div>
+<div class="settings-row" onclick="clearChat()"><div class="settings-icon" style="color:#e74c3c;"><i class="fas fa-eraser"></i></div><div class="settings-row-text" style="color:#e74c3c;">Clear chat</div></div>
+<div class="settings-row" onclick="deleteChat()"><div class="settings-icon" style="color:#e74c3c;"><i class="fas fa-trash"></i></div><div class="settings-row-text" style="color:#e74c3c;">Delete chat</div></div>
+</div>
+</div>
+<div class="three-dot-menu" id="threeDotMenu">
+        <div class="menu-item" onclick="closeDrawer();createNewGroup()">New group</div>
+        <div class="menu-item" onclick="closeDrawer();workInProgress('New community')">New community</div>
+        <div class="menu-item" onclick="closeDrawer();workInProgress('Broadcast lists')">Broadcast lists</div>
+        <div class="menu-item" onclick="closeDrawer();openSettings('linkedDevices')">Linked devices</div>
+        <div class="menu-item" onclick="closeDrawer();workInProgress('Starred messages')">Starred</div>
+        <div class="menu-item" onclick="closeDrawer();openUPI()">Payments</div>
+        <div class="menu-item" onclick="closeDrawer();workInProgress('Read all')">Read all</div>
+        <div class="menu-item" onclick="closeDrawer();openSettings('home')">Settings <span class="settings-dot"></span></div>
     </div>
 
     <div class="screen active" id="chatsScreen">
@@ -511,7 +778,7 @@
         <div class="recent-header">Recent</div>
         <div id="callHistoryList"></div>
     </div>
-    <div class="fab" id="mainFab" onclick="openSelectContact()"><i class="fas fa-plus"></i></div>
+    <div class="fab" id="mainFab" onclick="openNewGroupScreen()"><i class="fas fa-plus"></i></div>
 
     <div class="bottom-nav">
         <div class="nav-item active chats-active" onclick="switchTab('chatsScreen')" id="navChats"><i class="fas fa-comments"></i><span>Chats</span><div class="badge">14</div></div>
@@ -537,7 +804,7 @@
 </div>
 
 <div class="chat-window" id="chatWindow">
-        <div class="chat-window-header">
+        <div class="chat-window-header" onclick="if(event.target.id==='chatName'||event.target.id==='chatAvatar')openContactInfo()">
             <i class="fas fa-arrow-left" onclick="closeChatWindow()"></i>
             <div class="avatar" id="chatAvatar">R</div>
             <div class="name" id="chatName">Rahul
@@ -545,7 +812,7 @@
                         <div class="actions">
                 <i class="fas fa-video" onclick="startVideoCall()" title="Video call"></i>
                 <i class="fas fa-phone-alt" onclick="startVoiceCall()" title="Voice call"></i>
-                <i class="fas fa-ellipsis-v"></i>
+                <i class="fas fa-ellipsis-v" onclick="toggleChatMenu(event)"></i>
             </div>
         </div>
                 <div class="messages-area" id="messagesArea"></div>
@@ -568,6 +835,350 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
                         </div>
+    </div>
+    <!-- ================= SETTINGS SCREEN ================= -->
+    <div class="settings-screen" id="settingsScreen">
+
+        <!-- HOME -->
+        <div class="settings-page active" id="set_home">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="closeSettings()"></i>
+                <div class="settings-topbar-actions">
+                    <i class="fas fa-search" onclick="workInProgress('Search settings')"></i>
+                    <i class="fas fa-qrcode" onclick="workInProgress('QR code')"></i>
+                    <i class="fas fa-pen" onclick="workInProgress('Edit profile')"></i>
+                </div>
+            </div>
+
+            <div class="settings-profile">
+                <div class="settings-avatar" id="settingsAvatar" onclick="triggerAvatarUpload()">
+                    <img src="" id="settingsAvatarImg" style="display:none;">
+                    <span id="settingsAvatarLetter">U</span>
+                </div>
+                <div class="settings-name">
+                    <span id="settingsName">User</span> <i class="fas fa-chevron-down" style="font-size:14px;color:#667781;"></i>
+                </div>
+            </div>
+
+            <div class="settings-list">
+                <div class="settings-row" onclick="openUPI()">
+                    <div class="settings-icon"><i class="fas fa-rupee-sign"></i></div>
+                    <div class="settings-row-text">Payments</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Subscriptions')">
+                    <div class="settings-icon"><i class="fas fa-certificate"></i></div>
+                    <div class="settings-row-text">Subscriptions<br><span class="settings-sub">Explore premium benefits</span></div>
+                    <div class="settings-badge-dot"></div>
+                </div>
+                <div class="settings-row" onclick="openSettings('linkedDevices')">
+                    <div class="settings-icon"><i class="fas fa-desktop"></i></div>
+                    <div class="settings-row-text">Linked devices<br><span class="settings-sub">Use WhatsApp on other devices</span></div>
+                </div>
+            </div>
+
+            <div class="settings-list">
+                <div class="settings-row" onclick="openSettings('account')">
+                    <div class="settings-icon"><i class="fas fa-key"></i></div>
+                    <div class="settings-row-text">Account<br><span class="settings-sub">Security notifications, change number</span></div>
+                </div>
+                <div class="settings-row" onclick="openSettings('privacy')">
+                    <div class="settings-icon"><i class="fas fa-lock"></i></div>
+                    <div class="settings-row-text">Privacy<br><span class="settings-sub">Blocked accounts, disappearing messages</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Lists')">
+                    <div class="settings-icon"><i class="fas fa-address-book"></i></div>
+                    <div class="settings-row-text">Lists<br><span class="settings-sub">Manage people and groups</span></div>
+                </div>
+            </div>
+
+            <div class="settings-list">
+                <div class="settings-row" onclick="openSettings('chats')">
+                    <div class="settings-icon"><i class="fas fa-comment"></i></div>
+                    <div class="settings-row-text">Chats<br><span class="settings-sub">Chat history, backup</span></div>
+                </div>
+                <div class="settings-row" onclick="openSettings('appearance')">
+                    <div class="settings-icon"><i class="fas fa-palette"></i></div>
+                    <div class="settings-row-text">Appearance<br><span class="settings-sub">Chat theme, app icon, app theme</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Broadcasts')">
+                    <div class="settings-icon"><i class="fas fa-bullhorn"></i></div>
+                    <div class="settings-row-text">Broadcasts<br><span class="settings-sub">Manage lists and send broadcasts</span></div>
+                </div>
+                <div class="settings-row" onclick="openSettings('notifications')">
+                    <div class="settings-icon"><i class="fas fa-bell"></i></div>
+                    <div class="settings-row-text">Notifications<br><span class="settings-sub">Message, group &amp; call tones</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Storage and data')">
+                    <div class="settings-icon"><i class="fas fa-circle-notch"></i></div>
+                    <div class="settings-row-text">Storage and data<br><span class="settings-sub">Network usage, auto-download</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Parental controls')">
+                    <div class="settings-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="settings-row-text">Parental controls<br><span class="settings-sub">Settings for your family</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Accessibility')">
+                    <div class="settings-icon"><i class="fas fa-universal-access"></i></div>
+                    <div class="settings-row-text">Accessibility<br><span class="settings-sub">Increase contrast, animation</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('App language')">
+                    <div class="settings-icon"><i class="fas fa-globe"></i></div>
+                    <div class="settings-row-text">App language<br><span class="settings-sub">English (device's language)</span></div>
+                </div>
+            </div>
+
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Help and feedback')">
+                    <div class="settings-icon"><i class="fas fa-question-circle"></i></div>
+                    <div class="settings-row-text">Help and feedback<br><span class="settings-sub">Help Center, contact us, privacy policy</span></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Invite a friend')">
+                    <div class="settings-icon"><i class="fas fa-user-plus"></i></div>
+                    <div class="settings-row-text">Invite a friend</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACCOUNT -->
+        <div class="settings-page" id="set_account">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
+                <div class="settings-title">Account</div>
+                <i class="fas fa-ellipsis-v" onclick="workInProgress('More options')"></i>
+            </div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Add account')">
+                    <div class="settings-icon"><i class="fas fa-user-plus"></i></div>
+                    <div class="settings-row-text">Add account</div>
+                </div>
+            </div>
+            <div class="settings-section-title">Login and security</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Passkeys')">
+                    <div class="settings-icon"><i class="fas fa-user-shield"></i></div>
+                    <div class="settings-row-text">Passkeys</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Password')">
+                    <div class="settings-icon"><i class="fas fa-asterisk"></i></div>
+                    <div class="settings-row-text">Password</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Email address')">
+                    <div class="settings-icon"><i class="fas fa-envelope"></i></div>
+                    <div class="settings-row-text">Email address</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Two-step verification')">
+                    <div class="settings-icon"><i class="fas fa-lock"></i></div>
+                    <div class="settings-row-text">Two-step verification</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Security notifications')">
+                    <div class="settings-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="settings-row-text">Security notifications</div>
+                </div>
+            </div>
+            <div class="settings-section-title">Your account</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Username')">
+                    <div class="settings-icon"><i class="fas fa-at"></i></div>
+                    <div class="settings-row-text">Username</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Change phone number')">
+                    <div class="settings-icon"><i class="fas fa-phone"></i></div>
+                    <div class="settings-row-text">Change phone number</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Ad preferences')">
+                    <div class="settings-icon"><i class="fas fa-sliders-h"></i></div>
+                    <div class="settings-row-text">Ad preferences for Status &amp; Channels</div>
+                </div>
+            </div>
+            <div class="settings-list">
+                <div class="settings-row danger" onclick="logout()">
+                    <div class="settings-icon danger"><i class="fas fa-sign-out-alt"></i></div>
+                    <div class="settings-row-text danger">Log out</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRIVACY -->
+        <div class="settings-page" id="set_privacy">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
+                <div class="settings-title">Privacy</div>
+            </div>
+            <div class="settings-section-title">Who can see my personal info</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Last seen')"><div class="settings-row-text">Last seen and online<br><span class="settings-sub">My contacts, Everyone</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Profile picture')"><div class="settings-row-text">Profile picture<br><span class="settings-sub">Everyone</span></div></div>
+                <div class="settings-row" onclick="workInProgress('About')"><div class="settings-row-text">About<br><span class="settings-sub">My contacts</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Links')"><div class="settings-row-text">Links<br><span class="settings-sub">My contacts</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Status privacy')"><div class="settings-row-text">Status<br><span class="settings-sub">My contacts</span></div></div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Read receipts<br><span class="settings-sub">If turned off, you won't send or receive Read receipts.</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+            </div>
+            <div class="settings-section-title">Disappearing messages</div>
+            <div class="settings-list">
+                <div class="settings-row">
+                    <div class="settings-row-text">Default message timer<br><span class="settings-sub">Start new chats with disappearing messages set to your timer</span></div>
+                    <div class="settings-row-right">Off</div>
+                </div>
+            </div>
+            <div class="settings-section-title">Groups</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Groups')"><div class="settings-row-text">Groups<br><span class="settings-sub">Everyone</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Live location')"><div class="settings-row-text">Live location</div></div>
+                <div class="settings-row" onclick="workInProgress('Calls')"><div class="settings-row-text">Calls<br><span class="settings-sub">Silence unknown callers</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Blocked contacts')"><div class="settings-row-text">Contacts<br><span class="settings-sub">Blocked accounts, WhatsApp contacts</span></div></div>
+                <div class="settings-row" onclick="workInProgress('App lock')"><div class="settings-row-text">App lock<br><span class="settings-sub">Disabled</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Chat lock')"><div class="settings-row-text">Chat lock</div></div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Allow camera effects<br><span class="settings-sub">Use effects in the camera and video calls.</span></div>
+                    <div class="toggle off"><i class="fas fa-minus"></i></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Advanced')"><div class="settings-row-text">Advanced<br><span class="settings-sub">Protect IP address in calls, Disable link previews</span></div></div>
+            </div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Privacy checkup')"><div class="settings-row-text">Privacy checkup<br><span class="settings-sub">Control your privacy and choose the right settings for you.</span></div></div>
+            </div>
+        </div>
+
+        <!-- CHATS -->
+        <div class="settings-page" id="set_chats">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
+                <div class="settings-title">Chats</div>
+            </div>
+            <div class="settings-section-title">Chat settings</div>
+            <div class="settings-list">
+                <div class="settings-row">
+                    <div class="settings-row-text">Enter is send<br><span class="settings-sub">Enter key will send your message</span></div>
+                    <div class="toggle off"><i class="fas fa-minus"></i></div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Media visibility<br><span class="settings-sub">Show newly downloaded media in your device's gallery</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('Font size')"><div class="settings-row-text">Font size<br><span class="settings-sub">Medium</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Voice message transcripts')"><div class="settings-row-text">Voice message transcripts<br><span class="settings-sub">Read new voice messages.</span></div></div>
+            </div>
+            <div class="settings-section-title">Archived chats</div>
+            <div class="settings-list">
+                <div class="settings-row">
+                    <div class="settings-row-text">Keep chats archived<br><span class="settings-sub">Archived chats will remain archived when you receive a new message</span></div>
+                    <div class="toggle off"><i class="fas fa-minus"></i></div>
+                </div>
+            </div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Chat backup')"><div class="settings-icon"><i class="fas fa-cloud-upload-alt"></i></div><div class="settings-row-text">Chat backup</div></div>
+                <div class="settings-row" onclick="workInProgress('Transfer chats')"><div class="settings-icon"><i class="fas fa-exchange-alt"></i></div><div class="settings-row-text">Transfer chats</div></div>
+                <div class="settings-row" onclick="workInProgress('Chat history')"><div class="settings-icon"><i class="fas fa-history"></i></div><div class="settings-row-text">Chat history</div></div>
+                <div class="settings-row" onclick="workInProgress('Private Processing')"><div class="settings-icon"><i class="fas fa-lock"></i></div><div class="settings-row-text">Private Processing</div></div>
+            </div>
+        </div>
+
+        <!-- NOTIFICATIONS -->
+        <div class="settings-page" id="set_notifications">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
+                <div class="settings-title">Notifications</div>
+                <i class="fas fa-ellipsis-v" onclick="workInProgress('More')"></i>
+            </div>
+            <div class="settings-list">
+                <div class="settings-row">
+                    <div class="settings-row-text">Conversation tones<br><span class="settings-sub">Play sounds for incoming and outgoing messages.</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Reminders<br><span class="settings-sub">Get occasional reminders about messages, calls or status updates</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+            </div>
+            <div class="settings-section-title">Messages</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Notification tone')"><div class="settings-row-text">Notification tone<br><span class="settings-sub">Default ringtone (Default)</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Vibrate')"><div class="settings-row-text">Vibrate<br><span class="settings-sub">Default</span></div></div>
+                <div class="settings-row"><div class="settings-row-text" style="color:#8696a0;">Popup notification<br><span class="settings-sub">Not available</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Light')"><div class="settings-row-text">Light<br><span class="settings-sub">White</span></div></div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Use high priority notifications<br><span class="settings-sub">Show previews of notifications at the top of the screen</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Reaction notifications<br><span class="settings-sub">Show notifications for reactions to messages you send</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+            </div>
+            <div class="settings-section-title">Calls</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Ringtone')"><div class="settings-row-text">Ringtone<br><span class="settings-sub">Default ringtone (Blue Meteor Showers)</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Vibrate')"><div class="settings-row-text">Vibrate<br><span class="settings-sub">Default</span></div></div>
+            </div>
+            <div class="settings-section-title">Status</div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Status tone')"><div class="settings-row-text">Notification tone<br><span class="settings-sub">Default ringtone (Default)</span></div></div>
+                <div class="settings-row" onclick="workInProgress('Vibrate')"><div class="settings-row-text">Vibrate<br><span class="settings-sub">Default</span></div></div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Use high priority notifications<br><span class="settings-sub">Show previews at the top of the screen</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-text">Reactions<br><span class="settings-sub">Show notifications when you get likes on a status</span></div>
+                    <div class="toggle on"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="settings-row"><div class="settings-row-text">App icon badge<br><span class="settings-sub">Clears when you open WhatsApp</span></div></div>
+            </div>
+        </div>
+
+        <!-- APPEARANCE -->
+        <div class="settings-page" id="set_appearance">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
+                <div class="settings-title">Appearance</div>
+            </div>
+            <div class="settings-list">
+                <div class="settings-row" onclick="workInProgress('Default chat theme')">
+                    <div class="settings-icon"><i class="fas fa-comment"></i></div>
+                    <div class="settings-row-text">Default chat theme</div>
+                    <div class="theme-preview"></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('WhatsApp Plus')">
+                    <div class="settings-icon premium"><i class="fas fa-crown"></i></div>
+                    <div class="settings-row-text" style="color:#00a884;font-weight:600;">WhatsApp Plus</div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('App icon')">
+                    <div class="settings-icon"><i class="fas fa-th"></i></div>
+                    <div class="settings-row-text">App icon</div>
+                    <div class="app-icon-preview"></div>
+                </div>
+                <div class="settings-row" onclick="workInProgress('App theme')">
+                    <div class="settings-icon"><i class="fas fa-palette"></i></div>
+                    <div class="settings-row-text">App theme</div>
+                    <div class="theme-circle"></div>
+                </div>
+            </div>
+            <div class="settings-list" style="border-top:none;">
+                <div class="settings-row" onclick="workInProgress('WhatsApp Plus')" style="justify-content:center;text-align:center;">
+                    <div class="settings-row-text" style="color:#667781;font-size:14px;">Subscribe to WhatsApp Plus to change your app icon, theme and more. <span style="color:#00a884;">Explore benefits</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LINKED DEVICES -->
+        <div class="settings-page" id="set_linkedDevices">
+            <div class="settings-topbar">
+                <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
+                <div class="settings-title">Linked devices</div>
+            </div>
+            <div style="text-align:center;padding:40px 20px;">
+                <i class="fas fa-desktop" style="font-size:80px;color:#00a884;margin-bottom:20px;"></i>
+                <div style="font-size:20px;color:#111b21;margin-bottom:15px;">Use WhatsApp on other devices</div>
+                <div style="color:#667781;font-size:14px;line-height:1.6;">You can link other devices to this account, including Windows, Mac and Web. <span style="color:#00a884;">Learn more</span></div>
+            </div>
+            <button class="settings-cta" onclick="workInProgress('Link a device')">Link a device</button>
+            <div style="text-align:center;color:#667781;font-size:12px;padding:20px;">
+                <i class="fas fa-lock"></i> Your personal messages are end-to-end encrypted on all your devices.
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -651,6 +1262,11 @@ function createNewGroup() {
     closeSelectContact();
     openChatWindow(groupName, groupId);
 }
+function openNewGroupScreen(){document.getElementById('newGroupScreen').classList.add('active');loadGroupContactPicker();}
+function closeNewGroupScreen(){document.getElementById('newGroupScreen').classList.remove('active');selectedGroupMembers=[];document.getElementById('groupName').value='';}
+let selectedGroupMembers=[];
+async function loadGroupContactPicker(){const r=await fetch('/api/users');const u=await r.json();const c=document.getElementById('groupContactList');c.innerHTML='';u.filter(x=>x._id!==getMyId()).forEach(x=>{const d=document.createElement('div');d.className='contact-list-item';d.dataset.uid=x._id;d.innerHTML=`<div class="avatar" style="background:#00a884;">${x.avatarUrl?`<img src="${x.avatarUrl}">`:x.name.charAt(0).toUpperCase()}</div><div><div class="name">${x.name}</div><div class="status">${x.identifier}</div></div>`;d.onclick=()=>{d.classList.toggle('selected');if(d.classList.contains('selected'))selectedGroupMembers.push({id:x._id,name:x.name});else selectedGroupMembers=selectedGroupMembers.filter(m=>m.id!==x._id);};c.appendChild(d);});}
+async function createGroupFromScreen(){const name=document.getElementById('groupName').value.trim();if(!name)return alert('Enter group name');if(selectedGroupMembers.length<1)return alert('Pick at least 1 member');const gid='group_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);closeNewGroupScreen();openChatWindow(name,gid);}
     
     function playSendSound() {
         initAudio();
@@ -1117,6 +1733,24 @@ function toggleAuthMode() {
     document.getElementById('authError').innerText = '';
 }
 
+function handleGoogleLogin(response) {
+  fetch('/api/google-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: response.credential }) })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) return document.getElementById('authError').innerText = data.error;
+      localStorage.setItem('wa_token', data.token);
+      localStorage.setItem('wa_user', JSON.stringify(data.user));
+      currentUser = data.user;
+      authToken = data.token;
+      afterLogin();
+    })
+    .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
+}
+window.addEventListener('load', () => {
+  if (typeof google !== 'undefined') {
+    google.accounts.id.initialize({ client_id: '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com', callback: handleGoogleLogin });
+  }
+});
 async function doAuth() {
     const identifier = document.getElementById('authIdentifier').value.trim();
     const name = document.getElementById('authName').value.trim();
@@ -1777,6 +2411,48 @@ async function capturePhoto() {
         alert('Failed to send photo: ' + err.message);
     }
 }
+// --- SETTINGS NAVIGATION ---
+function openSettings(page) {
+    playClickSound();
+    document.getElementById('settingsScreen').classList.add('active');
+    document.querySelectorAll('.settings-page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('set_' + page);
+    if (target) target.classList.add('active');
+
+    // Populate profile header on the home page
+    if (page === 'home') {
+        document.getElementById('settingsName').innerText = getMyName();
+        const img = document.getElementById('settingsAvatarImg');
+        const letter = document.getElementById('settingsAvatarLetter');
+        if (currentUser && currentUser.avatarUrl) {
+            img.src = currentUser.avatarUrl;
+            img.style.display = 'block';
+            letter.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            letter.style.display = 'block';
+            letter.innerText = getMyName().charAt(0).toUpperCase();
+        }
+    }
+}
+
+function closeSettings() {
+    playClickSound();
+    document.getElementById('settingsScreen').classList.remove('active');
+}
+
+function closeDrawer() {
+    document.getElementById('threeDotMenu').style.display = 'none';
+}
+function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');}
+function closeChatMenu(){document.getElementById('chatMenu').classList.remove('active');}
+document.addEventListener('click',e=>{if(!e.target.closest('.chat-menu')&&!e.target.closest('.chat-window-header'))document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));});
+function openContactInfo(){if(!activeChatUserId)return;document.getElementById('contactInfoScreen').classList.add('active');document.getElementById('ciName').innerText=activeChatName;const a=document.getElementById('ciAvatar');a.style.background='#00a884';fetch('/api/users').then(r=>r.json()).then(us=>{const u=us.find(x=>x._id===activeChatUserId);if(u){document.getElementById('ciId').innerText=u.identifier;if(u.avatarUrl)a.innerHTML=`<img src="${u.avatarUrl}">`;else a.innerText=u.name.charAt(0).toUpperCase();}});}
+function closeContactInfo(){document.getElementById('contactInfoScreen').classList.remove('active');}
+function clearChat(){if(!confirm('Clear this chat?'))return;fetch('/api/messages/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:activeRoomId})}).then(()=>{document.getElementById('messagesArea').innerHTML='';alert('Chat cleared');});}
+function deleteChat(){if(!confirm('Delete this chat for everyone?'))return;fetch('/api/messages/deleteRoom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:activeRoomId})}).then(()=>{document.getElementById('messagesArea').innerHTML='';closeChatWindow();});}
+function blockContact(){if(!activeChatUserId)return;if(!confirm('Block '+activeChatName+'?'))return;alert('Blocked');closeChatWindow();}
+function toggleMuteChat(){alert('Muted');}
 // --- SIGNALING SERVER CONNECTION ---
 socket.on('connect', () => {
     console.log('✅ Connected to signaling server. My socket ID:', socket.id);
@@ -1895,6 +2571,7 @@ async function loadContacts() {
         console.warn('loadContacts failed:', err);
     }
 }
+socket.on('chatCleared',(d)=>{if(d.roomId===activeRoomId)document.getElementById('messagesArea').innerHTML='';});
 socket.on('messagesRead', (data) => {
     if (data.roomId !== activeRoomId) return;
     document.querySelectorAll('#messagesArea .msg-out .tick').forEach(t => {

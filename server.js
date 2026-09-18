@@ -7,6 +7,9 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const GOOGLE_CLIENT_ID = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-in-production-9a8b7c6d';
 
 const app = express();
@@ -150,6 +153,8 @@ app.post('/api/messages/read', async (req, res) => {
     }
 });
 
+app.post('/api/messages/clear', async (req, res) => { try { await Message.deleteMany({ roomId: req.body.roomId }); io.to(req.body.roomId).emit('chatCleared', { roomId: req.body.roomId }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/messages/deleteRoom', async (req, res) => { try { await Message.deleteMany({ roomId: req.body.roomId }); io.to(req.body.roomId).emit('chatCleared', { roomId: req.body.roomId }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/messages/delete', async (req, res) => {
     try {
         const { msgId, userId } = req.body;
@@ -185,6 +190,27 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
+app.post('/api/google-login', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Missing credential' });
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    const identifier = payload.email;
+    const name = payload.name || payload.email.split('@')[0];
+    const picture = payload.picture || null;
+    let user = await User.findOne({ identifier });
+    if (!user) {
+      const hashed = await bcrypt.hash('google_' + payload.sub + '_' + Date.now(), 10);
+      user = await User.create({ identifier, name, password: hashed, avatarUrl: picture });
+    } else if (picture && !user.avatarUrl) {
+      user.avatarUrl = picture;
+      await user.save();
+    }
+    const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier, avatarUrl: user.avatarUrl } });
+  } catch (err) { console.error('Google login error:', err); res.status(401).json({ error: 'Invalid Google token' }); }
+});
 app.post('/api/login', async (req, res) => {
     try {
         const { identifier, password } = req.body;
