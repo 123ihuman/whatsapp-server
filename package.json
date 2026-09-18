@@ -14,9 +14,11 @@
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "google-auth-library": "^11.1.0",
+    "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.1",
     "multer": "^2.4.0",
+    "qrcode": "^1.5.4",
     "socket.io": "^4.8.3"
   }
 }

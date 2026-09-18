@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', Arial, sans-serif; }
         body {
@@ -203,6 +205,38 @@
 .group-info-screen,.disappearing-picker,.broadcast-picker { position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:3100;display:none;overflow-y:auto;padding-bottom:40px; }
 .group-info-screen.active,.disappearing-picker.active,.broadcast-picker.active { display:block; }
 .dm-timer { display:inline-block;padding:4px 10px;background:#e7fce3;color:#008069;border-radius:12px;font-size:12px;margin-left:10px; }
+.location-screen, .live-duration-overlay{position:fixed;inset:0;background:#efeae2;z-index:5500;display:none;flex-direction:column;}
+.location-screen.active, .live-duration-overlay.active{display:flex;}
+.loc-topbar{background:#fff;display:flex;align-items:center;gap:20px;padding:14px 18px;border-bottom:1px solid #e0e0e0;}
+.loc-topbar i{font-size:22px;color:#111b21;cursor:pointer;}
+.loc-title{flex-grow:1;font-size:19px;font-weight:500;color:#111b21;}
+.loc-map-wrapper{flex-grow:1;position:relative;background:#e0e0e0;overflow:hidden;}
+.loc-map-frame{width:100%;height:100%;border:0;}
+.loc-recenter{position:absolute;top:20px;right:20px;width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.loc-recenter i{font-size:20px;color:#111b21;}
+.loc-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 0 30px;}
+.loc-row{display:flex;align-items:center;gap:20px;padding:18px 22px;cursor:pointer;}
+.loc-row:hover{background:#f5f6f6;}
+.loc-icon-dark{width:52px;height:52px;border-radius:50%;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;font-size:22px;}
+.loc-icon-green{width:52px;height:52px;border-radius:50%;border:2px solid #00a884;display:flex;align-items:center;justify-content:center;background:#fff;}
+.loc-dot-ring{width:26px;height:26px;border-radius:50%;border:2px solid #00a884;display:flex;align-items:center;justify-content:center;}
+.loc-dot-fill{width:12px;height:12px;border-radius:50%;background:#00a884;}
+.loc-row-text{font-size:17px;color:#111b21;}
+.loc-divider{height:1px;background:#e0e0e0;margin:0 22px;}
+.loc-section-label{font-size:14px;color:#667781;padding:14px 22px 4px;}
+.live-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 22px 30px;}
+.live-sheet-title{font-size:18px;color:#111b21;margin-bottom:18px;font-weight:500;}
+.live-durations{display:flex;background:#f0f2f5;border-radius:8px;overflow:hidden;margin-bottom:20px;}
+.live-dur-btn{flex:1;text-align:center;padding:12px 6px;font-size:14px;color:#111b21;cursor:pointer;}
+.live-dur-btn.active{background:#00a884;color:#fff;font-weight:600;}
+.live-comment-row{display:flex;align-items:center;gap:14px;}
+.live-comment-input{flex-grow:1;border:none;border-bottom:1px solid #8696a0;padding:10px 2px;outline:none;font-size:16px;background:transparent;}
+.live-send-btn{width:56px;height:56px;border-radius:50%;background:#00a884;color:#fff;border:none;font-size:22px;cursor:pointer;flex-shrink:0;}
+.msg-map-card{padding:0 !important;overflow:hidden;border-radius:10px;}
+.msg-map-card .map-preview{width:230px;height:160px;display:block;background:#e0e0e0;}
+.msg-map-card .map-foot{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:13px;color:#111b21;}
+.msg-map-card .map-foot i{font-size:16px;color:#00a884;}
+.msg-map-card .stop-sharing{display:block;text-align:center;padding:10px;color:#e74c3c;font-weight:600;font-size:14px;cursor:pointer;border-top:1px solid #f0f2f5;}
 .attach-sheet{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:6000;display:none;align-items:flex-end;}
 .attach-sheet.active{display:flex;}
 .attach-sheet-inner{width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;padding:12px 20px 30px;animation:slideUp .25s ease-out;}
@@ -721,7 +755,7 @@
 <div class="menu-item" onclick="closeChatMenu();togglePin()" id="pinMenuItem">Pin chat</div>
 <div class="menu-item" onclick="closeChatMenu();toggleArchive()" id="archiveMenuItem">Archive chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Report')">Report</div>
-<div class="menu-item" onclick="closeChatMenu();blockContact()">Block</div>
+<div class="menu-item" onclick="closeChatMenu();toggleBlock()" id="blockMenuItem">Block</div>
 <div class="menu-item" onclick="closeChatMenu();clearChat()">Clear chat</div>
 <div class="menu-item" onclick="closeChatMenu();deleteChat()">Delete chat</div>
 </div>
@@ -861,7 +895,7 @@
         <div class="recent-header">Recent</div>
         <div id="callHistoryList"></div>
     </div>
-    <div class="fab" id="mainFab" onclick="openNewGroupScreen()"><i class="fas fa-plus"></i></div>
+    <div class="fab" id="mainFab" onclick="openSelectContact()"><i class="fas fa-plus"></i></div>
     <div class="bottom-nav">
         <div class="nav-item active chats-active" onclick="switchTab('chatsScreen')" id="navChats"><span id="navChatsIcon" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#25d366;margin-bottom:5px;"><svg viewBox="0 0 24 24" fill="#fff" style="width:14px;height:14px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span><span>Chats</span><div class="badge" id="totalUnreadBadge" style="display:none;"></div>
 
@@ -1274,30 +1308,21 @@
 
         <!-- LINKED DEVICES -->
         <div class="settings-page" id="set_linkedDevices">
-            <div class="settings-topbar">
+                        <div class="settings-topbar">
                 <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
                 <div class="settings-title">Linked devices</div>
             </div>
-            <div style="text-align:center;padding:40px 20px;">
-                <svg viewBox="0 0 400 240" style="width:100%;max-width:320px;margin-bottom:20px;">
-<rect x="40" y="30" width="110" height="200" rx="16" fill="#e7fce3" stroke="#111b21" stroke-width="3"/>
-<circle cx="95" cy="215" r="6" fill="none" stroke="#111b21" stroke-width="2"/>
-<rect x="60" y="70" width="60" height="30" rx="6" fill="#fff" stroke="#111b21" stroke-width="2"/>
-<path d="M160 90 q20 -20 40 0 q20 20 40 0 q20 -20 40 0" fill="none" stroke="#00a884" stroke-width="3"/>
-<circle cx="230" cy="90" r="18" fill="#e7fce3" stroke="#00a884" stroke-width="2"/>
-<path d="M225 90 l4 4 l8 -8" stroke="#00a884" stroke-width="2.5" fill="none"/>
-<path d="M300 60 l90 30 l-30 40 l-60 -40 z" fill="#25d366" stroke="#111b21" stroke-width="3"/>
-<path d="M270 130 l110 20 l-30 50 l-80 -30 z" fill="#00c853" stroke="#111b21" stroke-width="3"/>
-</svg>
-                <div style="font-size:20px;color:#111b21;margin-bottom:15px;">Use WhatsApp on other devices</div>
-                <div style="color:#667781;font-size:14px;line-height:1.6;">You can link other devices to this account, including Windows, Mac and Web. <span style="color:#00a884;">Learn more</span></div>
+            <div style="text-align:center;padding:20px;">
+                <h3 style="color:#111b21;margin-bottom:10px;">Link a device</h3>
+                <p style="color:#667781;font-size:14px;margin-bottom:20px;">Scan this QR with your mobile app</p>
+                <div id="qrcode" style="margin:20px auto;display:inline-block;"></div>
             </div>
-            <button class="settings-cta" onclick="workInProgress('Link a device')">Link a device</button>
+            <button class="settings-cta" onclick="showQrForLinking()">Generate QR code</button>
+            <button class="settings-cta" onclick="openQrScanner()" style="background:#54656f;">Scan QR code (mobile)</button>
             <div style="text-align:center;color:#667781;font-size:12px;padding:20px;">
                 <i class="fas fa-lock"></i> Your personal messages are end-to-end encrypted on all your devices.
             </div>
         </div>
-
     </div>
 </div>
 
@@ -1362,7 +1387,13 @@
         <div class="reaction-btn" onclick="sendStatusReaction('💧', this)">💧</div>
     </div>
 </div>
-<!-- Camera Capture Overlay -->
+<div id="qrScannerScreen" style="position:fixed; inset:0; background:#000; z-index:9999; display:none; flex-direction:column;">
+    <div style="padding:15px; color:white; display:flex; align-items:center;">
+        <i class="fas fa-arrow-left" onclick="closeQrScanner()" style="font-size:24px; cursor:pointer;"></i>
+        <span style="margin-left:15px; font-size:18px;">Scan QR Code</span>
+    </div>
+    <div id="qr-reader" style="flex-grow:1;"></div>
+</div>
 <div class="attach-sheet" id="attachSheet" onclick="if(event.target===this)closeAttachSheet()">
 <div class="attach-sheet-inner">
 <div class="attach-handle"></div>
@@ -1380,6 +1411,53 @@
 </div>
 <input type="file" id="attachGalleryInput" accept="image/*,video/*" style="display:none" onchange="sendMediaFile(event)">
 <input type="file" id="attachDocumentInput" accept="*/*" style="display:none" onchange="sendMediaFile(event)">
+<div class="location-screen" id="locationScreen">
+  <div class="loc-topbar">
+    <i class="fas fa-arrow-left" onclick="closeLocationScreen()"></i>
+    <div class="loc-title">Send location</div>
+    <i class="fas fa-search" onclick="searchLocation()"></i>
+    <i class="fas fa-sync-alt" onclick="refreshLocationMap()"></i>
+  </div>
+  <div class="loc-map-wrapper">
+    <iframe id="locMapFrame" class="loc-map-frame" src="" frameborder="0"></iframe>
+    <div class="loc-recenter" onclick="refreshLocationMap()"><i class="fas fa-crosshairs"></i></div>
+  </div>
+  <div class="loc-sheet">
+    <div class="loc-row loc-live" onclick="openLiveDurationPicker()">
+      <div class="loc-icon-dark"><i class="fas fa-circle-notch"></i><i class="fas fa-dot-circle" style="position:absolute;font-size:8px;color:#fff;"></i></div>
+      <div class="loc-row-text">Share live location</div>
+    </div>
+    <div class="loc-divider"></div>
+    <div class="loc-section-label">Nearby places</div>
+    <div class="loc-row loc-current" onclick="sendCurrentLocation()">
+      <div class="loc-icon-green"><div class="loc-dot-ring"><div class="loc-dot-fill"></div></div></div>
+      <div class="loc-row-text">Send your current location</div>
+    </div>
+  </div>
+</div>
+
+<div class="live-duration-overlay" id="liveDurationOverlay">
+  <div class="loc-topbar">
+    <i class="fas fa-arrow-left" onclick="closeLiveDurationPicker()"></i>
+    <div class="loc-title">Send location</div>
+  </div>
+  <div class="loc-map-wrapper">
+    <iframe id="liveMapFrame" class="loc-map-frame" src="" frameborder="0"></iframe>
+    <div class="loc-recenter"><i class="fas fa-crosshairs"></i></div>
+  </div>
+  <div class="live-sheet">
+    <div class="live-sheet-title">Share live location</div>
+    <div class="live-durations">
+      <div class="live-dur-btn" data-min="15" onclick="pickLiveDuration(15, this)">15 minutes</div>
+      <div class="live-dur-btn active" data-min="60" onclick="pickLiveDuration(60, this)">1 hour</div>
+      <div class="live-dur-btn" data-min="480" onclick="pickLiveDuration(480, this)">8 hours</div>
+    </div>
+    <div class="live-comment-row">
+      <input type="text" id="liveComment" placeholder="Add comment" class="live-comment-input">
+      <button class="live-send-btn" onclick="sendLiveLocation()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
 <div class="camera-overlay" id="cameraOverlay">
     <video id="cameraPreview" autoplay playsinline></video>
     <div class="camera-controls">
@@ -1398,6 +1476,34 @@ socket.on('connect', () => {
     // If already logged in, tell the server we're online
     if (currentUser) socket.emit('userOnline', currentUser.id);
 });
+async function showQrForLinking() {
+    // Clear any old QR code
+    document.getElementById('qrcode').innerHTML = '';
+    
+    // 1. Ask the server for a new session ID
+    const res = await fetch('/api/qr/generate', { method: 'POST' });
+    const { sessionId } = await res.json();
+
+    // 2. Tell the server we're waiting for this session
+    socket.emit('join-qr-session', sessionId);
+
+    // 3. Generate the QR code with the session ID
+        new QRCode(document.getElementById('qrcode'), {
+        text: sessionId,
+        width: 200,
+        height: 200
+    });
+
+    socket.once('qr-login-success', (userData) => {
+        localStorage.setItem('wa_token', userData.token);
+        localStorage.setItem('wa_user', JSON.stringify(userData));
+        currentUser = userData;
+        afterLogin();
+        alert('Device linked successfully!');
+    });
+}
+
+// Call showQrForLinking() when you click on "Link a device" in Settings
 
     // --- SOUND EFFECTS USING WEB AUDIO API ---
     let audioCtx;
@@ -1406,6 +1512,57 @@ socket.on('connect', () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
     }
+let html5QrCode;
+
+function openQrScanner() {
+    document.getElementById('qrScannerScreen').style.display = 'flex';
+    html5QrCode = new Html5Qrcode("qr-reader");
+    const config = { fps: 10, qrbox: 250 };
+    
+    html5QrCode.start(
+        { facingMode: "environment" }, // Use the back camera
+        config,
+        onScanSuccess // Callback
+    ).catch(err => {
+        alert('Could not start camera. Please grant permission.');
+        closeQrScanner();
+    });
+}
+
+function closeQrScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            document.getElementById('qrScannerScreen').style.display = 'none';
+        });
+    } else {
+        document.getElementById('qrScannerScreen').style.display = 'none';
+    }
+}
+
+async function onScanSuccess(decodedText, decodedResult) {
+    // Stop scanning
+    await html5QrCode.stop();
+    
+    // Send the scanned session ID to the server to confirm
+    const res = await fetch('/api/qr/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            sessionId: decodedText, 
+            userId: getMyId() // The mobile user's ID
+        })
+    });
+
+    if (res.ok) {
+        alert('Device linked! You can now use WhatsApp on your laptop.');
+    } else {
+        const err = await res.json();
+        alert('Error: ' + (err.error || 'Failed to link'));
+    }
+    closeQrScanner();
+}
+
+// Add a button in Settings > Linked Devices to call openQrScanner()
 function voiceNoteNotReady() {
     alert('Voice messages coming soon. Type to send text.');
 }
@@ -1591,6 +1748,10 @@ async function openChatWindow(name, userId) {
 
     activeChatUserId = userId;
     activeRoomId = makeRoomId(getMyId(), userId);
+    await loadPrefs();
+    if ((prefs.blocked || []).includes(userId)) {
+        setTimeout(() => alert(activeChatName + ' is blocked. Unblock from the ⋮ menu to continue.'), 100);
+    }
 
     // Join the room for real-time messages
     socket.emit('joinChat', activeRoomId);
@@ -1624,6 +1785,7 @@ document.getElementById('groupInfoMenuItem').style.display = userId && String(us
 function renderMessage(m) {
     const area = document.getElementById('messagesArea');
     const isMine = m.sender === getMyId();
+    if (!isMine && (prefs.blocked || []).includes(m.sender)) return;
     const time = new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const tick = isMine
         ? `<span class="tick ${m.read ? 'read' : ''}"><i class="fas fa-check-double"></i></span>`
@@ -1649,6 +1811,28 @@ function renderMessage(m) {
             bodyHtml = `<video src="${m.mediaUrl}" controls style="max-width:100%;border-radius:8px;display:block;margin-bottom:4px;"></video>`;
         } else if (m.mediaType === 'audio') {
             bodyHtml = `<audio src="${m.mediaUrl}" controls style="width:220px;margin-bottom:4px;"></audio>`;
+        }
+        if (m.mediaType === 'location') {
+          const parts = (m.mediaUrl || '').split(',');
+          const lat = parts[0], lng = parts[1];
+          const mapUrl = 'https://maps.google.com/maps?q=' + lat + ',' + lng + '&z=15&output=embed';
+          bodyHtml = '<div class="msg-map-card" style="padding:0;">' +
+            '<iframe class="map-preview" src="' + mapUrl + '" style="border:0;"></iframe>' +
+            '<div class="map-foot"><i class="fas fa-map-marker-alt"></i> Shared location</div>' +
+            '</div>';
+        } else if (m.mediaType === 'liveLocation') {
+          const data = (m.mediaUrl || '').split('|');
+          const coords = (data[0] || '').split(',');
+          const endTime = parseInt(data[1] || '0');
+          const exp = new Date(endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const mapUrl = 'https://maps.google.com/maps?q=' + coords[0] + ',' + coords[1] + '&z=15&output=embed';
+          const isMine = m.sender === getMyId();
+          const stillLive = Date.now() < endTime;
+          bodyHtml = '<div class="msg-map-card" style="padding:0;">' +
+            '<iframe class="map-preview" src="' + mapUrl + '" style="border:0;"></iframe>' +
+            '<div class="map-foot"><i class="fas fa-map-marker-alt"></i> ' + (stillLive ? 'Live until ' + exp : 'Live location ended') + '</div>' +
+            (isMine && stillLive ? '<div class="stop-sharing" onclick="stopLiveLocation(\'' + m._id + '\')">Stop sharing</div>' : '') +
+            '</div>';
         }
             if (m.text) bodyHtml += `<div class="msg-text">${m.text}</div>`;
     }
@@ -2677,6 +2861,12 @@ function updateChatMenuItemLabels() {
   document.getElementById('pinMenuItem').innerText = prefs.pinned.includes(activeRoomId) ? 'Unpin chat' : 'Pin chat';
   document.getElementById('archiveMenuItem').innerText = prefs.archived.includes(activeRoomId) ? 'Unarchive chat' : 'Archive chat';
   document.getElementById('starMenuItem').innerText = prefs.starred.includes(activeRoomId) ? 'Unstar messages' : 'Star messages';
+  const bl = document.getElementById('blockMenuItem');
+  if (bl && activeChatUserId) {
+    const isBlocked = (prefs.blocked || []).includes(activeChatUserId);
+    bl.innerText = isBlocked ? 'Unblock' : 'Block';
+    bl.style.color = isBlocked ? '#00a884' : '#e74c3c';
+  }
 }
 let activeDisappearingSecs = 0;
 let activeGroupId = null;
@@ -2849,27 +3039,99 @@ function closeAttachSheet() { document.getElementById('attachSheet').classList.r
 function attachGallery() { closeAttachSheet(); document.getElementById('attachGalleryInput').click(); }
 function attachCamera() { closeAttachSheet(); openCamera(); }
 function attachDocument() { closeAttachSheet(); document.getElementById('attachDocumentInput').click(); }
+let currentLat = null, currentLng = null;
+let selectedLiveMinutes = 60;
+let liveLocationTimer = null;
+
 function attachLocation() {
   closeAttachSheet();
-  const place = prompt('Enter a location to share (address, landmark, or coordinates):');
-  if (!place || !place.trim()) return;
-  const query = encodeURIComponent(place.trim());
-  const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + query;
-  socket.emit('sendMessage', {
-    roomId: activeRoomId, sender: getMyId(), senderName: getMyName(),
-    text: '📍 Location: ' + place + '\n' + mapsUrl
-  });
+  if (!activeRoomId) return alert('Open a chat first');
+  document.getElementById('locationScreen').classList.add('active');
+  refreshLocationMap();
 }
-function attachContact() {
-  closeAttachSheet();
-  const name = prompt('Contact name:');
-  if (!name || !name.trim()) return;
-  const phone = prompt('Phone number or email:');
-  if (!phone || !phone.trim()) return;
+
+function closeLocationScreen() {
+  document.getElementById('locationScreen').classList.remove('active');
+}
+
+function refreshLocationMap() {
+  if (!navigator.geolocation) {
+    document.getElementById('locMapFrame').src = 'https://www.openstreetmap.org/export/embed.html?bbox=68,8,98,37&layer=mapnik';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      currentLat = pos.coords.latitude;
+      currentLng = pos.coords.longitude;
+      const d = 0.005;
+      document.getElementById('locMapFrame').src =
+        'https://www.openstreetmap.org/export/embed.html?bbox=' + (currentLng - d) + ',' + (currentLat - d) + ',' + (currentLng + d) + ',' + (currentLat + d) + '&layer=mapnik&marker=' + currentLat + ',' + currentLng;
+    },
+    () => {
+      document.getElementById('locMapFrame').src = 'https://www.openstreetmap.org/export/embed.html?bbox=68,8,98,37&layer=mapnik';
+      alert('Enable location permission to pick your location.');
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function searchLocation() {
+  const q = prompt('Search a place:');
+  if (!q || !q.trim()) return;
+  fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q))
+    .then(r => r.json()).then(list => {
+      if (!list.length) return alert('Not found');
+      currentLat = parseFloat(list[0].lat);
+      currentLng = parseFloat(list[0].lon);
+      const d = 0.005;
+      document.getElementById('locMapFrame').src =
+        'https://www.openstreetmap.org/export/embed.html?bbox=' + (currentLng - d) + ',' + (currentLat - d) + ',' + (currentLng + d) + ',' + (currentLat + d) + '&layer=mapnik&marker=' + currentLat + ',' + currentLng;
+    }).catch(() => alert('Search failed'));
+}
+
+function sendCurrentLocation() {
+  if (currentLat == null || currentLng == null) return alert('Location not ready');
   socket.emit('sendMessage', {
     roomId: activeRoomId, sender: getMyId(), senderName: getMyName(),
-    text: '👤 Contact\nName: ' + name.trim() + '\nPhone: ' + phone.trim()
+    text: '📍 Location', mediaType: 'location',
+    mediaUrl: currentLat + ',' + currentLng
   });
+  closeLocationScreen();
+}
+
+function openLiveDurationPicker() {
+  document.getElementById('locationScreen').classList.remove('active');
+  document.getElementById('liveDurationOverlay').classList.add('active');
+  if (currentLat != null && currentLng != null) {
+    const d = 0.005;
+    document.getElementById('liveMapFrame').src =
+      'https://www.openstreetmap.org/export/embed.html?bbox=' + (currentLng - d) + ',' + (currentLat - d) + ',' + (currentLng + d) + ',' + (currentLat + d) + '&layer=mapnik&marker=' + currentLat + ',' + currentLng;
+  }
+}
+
+function closeLiveDurationPicker() {
+  document.getElementById('liveDurationOverlay').classList.remove('active');
+  document.getElementById('locationScreen').classList.add('active');
+}
+
+function pickLiveDuration(min, el) {
+  selectedLiveMinutes = min;
+  document.querySelectorAll('.live-dur-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function sendLiveLocation() {
+  if (currentLat == null || currentLng == null) return alert('Location not ready');
+  const comment = document.getElementById('liveComment').value.trim();
+  const endTime = Date.now() + selectedLiveMinutes * 60 * 1000;
+  socket.emit('sendMessage', {
+    roomId: activeRoomId, sender: getMyId(), senderName: getMyName(),
+    text: (comment ? comment + '\n' : '') + '📍 Live location',
+    mediaType: 'liveLocation',
+    mediaUrl: currentLat + ',' + currentLng + '|' + endTime
+  });
+  document.getElementById('liveComment').value = '';
+  document.getElementById('liveDurationOverlay').classList.remove('active');
 }
 function attachPoll() {
   closeAttachSheet();
@@ -2889,6 +3151,15 @@ function attachEvent() {
   socket.emit('sendMessage', { roomId: activeRoomId, sender: getMyId(), senderName: getMyName(), text: '📅 Event: ' + title + '\nWhen: ' + when });
 }
 function attachAIImages() { closeAttachSheet(); alert('AI image generation coming soon'); }
+function stopLiveLocation(msgId) {
+  const el = document.querySelector('[data-msg-id="' + msgId + '"]');
+  if (el) {
+    const foot = el.querySelector('.map-foot');
+    if (foot) foot.innerHTML = '<i class="fas fa-map-marker-alt"></i> Live location ended';
+    const stop = el.querySelector('.stop-sharing');
+    if (stop) stop.remove();
+  }
+}
 function closeDrawer() {
     document.getElementById('threeDotMenu').style.display = 'none';
 }
@@ -3071,6 +3342,20 @@ async function blockContact(){
   await savePrefs('blocked',list);
   alert('Blocked');
   closeChatWindow();
+}
+async function unblockContactFromChat(){
+  if(!activeChatUserId)return;
+  if(!confirm('Unblock '+activeChatName+'?'))return;
+  const list=(prefs.blocked||[]).filter(x=>x!==activeChatUserId);
+  await savePrefs('blocked',list);
+  alert('Unblocked');
+  updateChatMenuItemLabels();
+}
+function toggleBlock(){
+  if(!activeChatUserId)return;
+  const isBlocked=(prefs.blocked||[]).includes(activeChatUserId);
+  if(isBlocked) unblockContactFromChat();
+  else blockContact();
 }
 function toggleMuteChat(){alert('Muted');}
 // --- SIGNALING SERVER CONNECTION ---

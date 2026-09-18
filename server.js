@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
+const crypto = require('crypto');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -407,6 +408,38 @@ app.post('/api/groups/removeMember', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ---------- QR LOGIN ----------
+const qrSessionSchema = new mongoose.Schema({
+    sessionId: { type: String, required: true, unique: true },
+    createdAt: { type: Date, default: Date.now, expires: 120 }
+});
+const QrSession = mongoose.model('QrSession', qrSessionSchema);
+
+app.post('/api/qr/generate', async (req, res) => {
+    try {
+        const sessionId = crypto.randomBytes(32).toString('hex');
+        await QrSession.create({ sessionId });
+        res.json({ sessionId });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/qr/scan', async (req, res) => {
+    try {
+        const { sessionId, userId } = req.body;
+        const session = await QrSession.findOne({ sessionId });
+        if (!session) return res.status(400).json({ error: 'Invalid or expired QR code' });
+        const user = await User.findById(userId);
+        if (!user) return res.status(400).json({ error: 'User not found' });
+        const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
+        io.to(sessionId).emit('qr-login-success', {
+            userId: user._id, name: user.name, identifier: user.identifier,
+            avatarUrl: user.avatarUrl, token
+        });
+        await QrSession.deleteOne({ sessionId });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ---------- SOCKET.IO ----------
 const onlineUsers = new Map(); // socketId -> userId
 
@@ -418,9 +451,14 @@ function broadcastOnline() {
 io.on('connection', (socket) => {
     console.log('✅ User connected:', socket.id);
 
-    socket.on('userOnline', (userId) => {
+        socket.on('userOnline', (userId) => {
         onlineUsers.set(socket.id, userId);
         broadcastOnline();
+    });
+
+    socket.on('join-qr-session', (sessionId) => {
+        socket.join(sessionId);
+        console.log(`Desktop waiting for QR session: ${sessionId}`);
     });
 
     socket.on('joinRoom', (roomId) => {
