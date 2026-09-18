@@ -196,13 +196,23 @@
 .chat-menu{position:fixed !important;top:70px !important;right:calc(50vw - 200px) !important;}
 .chat-menu .menu-item{padding:12px 20px;font-size:15px;color:#111b21;cursor:pointer;}
 .chat-menu .menu-item:hover{background:#f5f6f6;}
-.new-group-screen,.contact-info-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2500;display:none;overflow-y:auto;padding-bottom:40px;}
+.new-group-screen,.contact-info-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:3100;display:none;overflow-y:auto;padding-bottom:40px;}
 .new-group-screen.active,.contact-info-screen.active{display:block;}
 .contact-list-item.selected{background:#e7fce3;}
 .contact-list-item.selected::after{content:"✓";margin-left:auto;color:#00a884;font-weight:bold;}
-.group-info-screen,.disappearing-picker,.broadcast-picker { position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2600;display:none;overflow-y:auto;padding-bottom:40px; }
+.group-info-screen,.disappearing-picker,.broadcast-picker { position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:3100;display:none;overflow-y:auto;padding-bottom:40px; }
 .group-info-screen.active,.disappearing-picker.active,.broadcast-picker.active { display:block; }
 .dm-timer { display:inline-block;padding:4px 10px;background:#e7fce3;color:#008069;border-radius:12px;font-size:12px;margin-left:10px; }
+.attach-sheet{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:6000;display:none;align-items:flex-end;}
+.attach-sheet.active{display:flex;}
+.attach-sheet-inner{width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;padding:12px 20px 30px;animation:slideUp .25s ease-out;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.attach-handle{width:40px;height:4px;background:#ccc;border-radius:2px;margin:0 auto 20px;}
+.attach-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 10px;}
+.attach-item{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .15s;}
+.attach-item:hover{transform:scale(1.08);}
+.attach-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.attach-item span{font-size:12px;color:#111b21;text-align:center;}
 .three-dot-menu { display: none; position: absolute; top: 50px; right: 10px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border-radius: 5px; width: 250px; z-index: 1500; }
         .menu-item { padding: 15px 20px; font-size: 15px; color: #111b21; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
         .menu-item:hover { background: #f5f6f6; }
@@ -354,7 +364,7 @@
 .starred-item{padding:12px 16px;border-bottom:1px solid #f0f2f5;}
 .starred-item .si-head{font-size:13px;color:#00a884;font-weight:600;margin-bottom:4px;}
 .starred-item .si-body{font-size:14px;color:#111b21;}
-.starred-screen,.blocked-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2650;display:none;overflow-y:auto;padding-bottom:40px;}
+.starred-screen,.blocked-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:3100;display:none;overflow-y:auto;padding-bottom:40px;}
 .starred-screen.active,.blocked-screen.active{display:block;}
 .reaction-picker { position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:#fff;border-radius:40px;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:none;padding:8px 12px;gap:8px;z-index:5000; }
 .reaction-picker.active { display:flex; }
@@ -900,7 +910,7 @@
                 <i class="far fa-smile" onclick="toggleEmojiPicker(event)" style="cursor:pointer;"></i>
                 <input type="text" id="chatInput" placeholder="Message">
                 <i class="fas fa-camera" onclick="document.getElementById('chatFileInput').click()" title="Camera"></i>
-                <i class="fas fa-paperclip" onclick="document.getElementById('chatFileInput').click()" title="Attach"></i>
+                <i class="fas fa-paperclip" onclick="openAttachSheet()" title="Attach" style="cursor:pointer;"></i>
                 <input type="file" id="chatFileInput" accept="image/*,video/*" style="display:none" onchange="sendMediaFile(event)">
             </div>
             <button class="send-btn" id="sendBtn" onclick="sendSimMessage()">
@@ -1219,6 +1229,10 @@
                     <div class="settings-row-text">App theme</div>
                     <div class="theme-circle"></div>
                 </div>
+                <div class="settings-row" onclick="editAppName()">
+                    <div class="settings-icon"><i class="fas fa-signature"></i></div>
+                    <div class="settings-row-text">App name<br><span class="settings-sub" id="appNamePreview">WhatsApp</span></div>
+                </div>
             </div>
                     <div class="settings-list" style="border-top:none;">
                 <div class="settings-row" onclick="workInProgress('WhatsApp Plus')" style="justify-content:center;text-align:center;">
@@ -1349,6 +1363,23 @@
     </div>
 </div>
 <!-- Camera Capture Overlay -->
+<div class="attach-sheet" id="attachSheet" onclick="if(event.target===this)closeAttachSheet()">
+<div class="attach-sheet-inner">
+<div class="attach-handle"></div>
+<div class="attach-grid">
+<div class="attach-item" onclick="attachGallery()"><div class="attach-circle" style="background:#e3f2fd;"><i class="fas fa-image" style="color:#1976d2;"></i></div><span>Gallery</span></div>
+<div class="attach-item" onclick="attachCamera()"><div class="attach-circle" style="background:#fce4ec;"><i class="fas fa-camera" style="color:#e91e63;"></i></div><span>Camera</span></div>
+<div class="attach-item" onclick="attachLocation()"><div class="attach-circle" style="background:#e0f2f1;"><i class="fas fa-map-marker-alt" style="color:#00897b;"></i></div><span>Location</span></div>
+<div class="attach-item" onclick="attachContact()"><div class="attach-circle" style="background:#e8eaf6;"><i class="fas fa-user" style="color:#3949ab;"></i></div><span>Contact</span></div>
+<div class="attach-item" onclick="attachDocument()"><div class="attach-circle" style="background:#ede7f6;"><i class="fas fa-file-alt" style="color:#7c3aed;"></i></div><span>Document</span></div>
+<div class="attach-item" onclick="attachPoll()"><div class="attach-circle" style="background:#fff8e1;"><i class="fas fa-poll" style="color:#f9a825;"></i></div><span>Poll</span></div>
+<div class="attach-item" onclick="attachEvent()"><div class="attach-circle" style="background:#ffebee;"><i class="fas fa-calendar-alt" style="color:#e53935;"></i></div><span>Event</span></div>
+<div class="attach-item" onclick="attachAIImages()"><div class="attach-circle" style="background:#e1f5fe;"><i class="fas fa-magic" style="color:#0288d1;"></i></div><span>AI images</span></div>
+</div>
+</div>
+</div>
+<input type="file" id="attachGalleryInput" accept="image/*,video/*" style="display:none" onchange="sendMediaFile(event)">
+<input type="file" id="attachDocumentInput" accept="*/*" style="display:none" onchange="sendMediaFile(event)">
 <div class="camera-overlay" id="cameraOverlay">
     <video id="cameraPreview" autoplay playsinline></video>
     <div class="camera-controls">
@@ -2795,6 +2826,69 @@ async function unblockContact(id){
   await fetch('/api/unblock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:getMyId(),targetId:id})});
   openBlockedScreen();
 }
+function editAppName() {
+  const cur = localStorage.getItem('wa_appname') || 'WhatsApp';
+  const next = prompt('Enter the app name to display:', cur);
+  if (!next || !next.trim()) return;
+  const name = next.trim().slice(0, 20);
+  localStorage.setItem('wa_appname', name);
+  applyAppName(name);
+  alert('App name changed');
+}
+function applyAppName(name) {
+  const lt = document.getElementById('logoText');
+  if (lt) lt.innerText = name;
+  const authLogo = document.querySelector('.auth-logo');
+  if (authLogo) authLogo.innerText = name;
+  const prev = document.getElementById('appNamePreview');
+  if (prev) prev.innerText = name;
+  document.title = name;
+}
+function openAttachSheet() { document.getElementById('attachSheet').classList.add('active'); }
+function closeAttachSheet() { document.getElementById('attachSheet').classList.remove('active'); }
+function attachGallery() { closeAttachSheet(); document.getElementById('attachGalleryInput').click(); }
+function attachCamera() { closeAttachSheet(); openCamera(); }
+function attachDocument() { closeAttachSheet(); document.getElementById('attachDocumentInput').click(); }
+function attachLocation() {
+  closeAttachSheet();
+  const place = prompt('Enter a location to share (address, landmark, or coordinates):');
+  if (!place || !place.trim()) return;
+  const query = encodeURIComponent(place.trim());
+  const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + query;
+  socket.emit('sendMessage', {
+    roomId: activeRoomId, sender: getMyId(), senderName: getMyName(),
+    text: '📍 Location: ' + place + '\n' + mapsUrl
+  });
+}
+function attachContact() {
+  closeAttachSheet();
+  const name = prompt('Contact name:');
+  if (!name || !name.trim()) return;
+  const phone = prompt('Phone number or email:');
+  if (!phone || !phone.trim()) return;
+  socket.emit('sendMessage', {
+    roomId: activeRoomId, sender: getMyId(), senderName: getMyName(),
+    text: '👤 Contact\nName: ' + name.trim() + '\nPhone: ' + phone.trim()
+  });
+}
+function attachPoll() {
+  closeAttachSheet();
+  const question = prompt('Poll question:');
+  if (!question) return;
+  const options = prompt('Options (comma-separated, e.g. Yes,No,Maybe):');
+  if (!options) return;
+  const text = '📊 Poll: ' + question + '\n' + options.split(',').map(o => '• ' + o.trim()).join('\n');
+  socket.emit('sendMessage', { roomId: activeRoomId, sender: getMyId(), senderName: getMyName(), text });
+}
+function attachEvent() {
+  closeAttachSheet();
+  const title = prompt('Event name:');
+  if (!title) return;
+  const when = prompt('Date and time (e.g. 25 Dec 2026, 6 PM):');
+  if (!when) return;
+  socket.emit('sendMessage', { roomId: activeRoomId, sender: getMyId(), senderName: getMyName(), text: '📅 Event: ' + title + '\nWhen: ' + when });
+}
+function attachAIImages() { closeAttachSheet(); alert('AI image generation coming soon'); }
 function closeDrawer() {
     document.getElementById('threeDotMenu').style.display = 'none';
 }
@@ -2947,7 +3041,9 @@ function applyFontSize(v) {
   const ic = localStorage.getItem('wa_icon');
   if (ic) { const found = APP_ICONS.find(x => x.name === ic); if (found) setTimeout(() => applyAppIcon(found), 200); }
   const fav = localStorage.getItem('wa_favicon');
-    if (fav) { document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove()); const l1 = document.createElement('link'); l1.rel='icon'; l1.type='image/png'; l1.href=fav; const l2 = document.createElement('link'); l2.rel='apple-touch-icon'; l2.href=fav; document.head.appendChild(l1); document.head.appendChild(l2); }
+  if (fav) { document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove()); const l1 = document.createElement('link'); l1.rel='icon'; l1.type='image/png'; l1.href=fav; const l2 = document.createElement('link'); l2.rel='apple-touch-icon'; l2.href=fav; document.head.appendChild(l1); document.head.appendChild(l2); }
+  const nm = localStorage.getItem('wa_appname');
+  if (nm) setTimeout(() => applyAppName(nm), 150);
 })();
 function showNotification(title, body, msg) {
   if (!('Notification' in window)) return;
