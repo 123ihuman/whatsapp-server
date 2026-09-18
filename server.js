@@ -431,8 +431,8 @@ app.post('/api/qr/scan', async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.status(400).json({ error: 'User not found' });
         const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
-        io.to(sessionId).emit('qr-login-success', {
-            userId: user._id, name: user.name, identifier: user.identifier,
+                io.to(sessionId).emit('qr-login-success', {
+            id: user._id, name: user.name, identifier: user.identifier,
             avatarUrl: user.avatarUrl, token
         });
         await QrSession.deleteOne({ sessionId });
@@ -466,6 +466,7 @@ io.on('connection', (socket) => {
         socket.to(roomId).emit('userJoined', socket.id);
     });
     socket.on('offer', (d) => socket.to(d.roomId).emit('offer', d));
+    socket.on('callType', (d) => socket.to(d.roomId).emit('callType', d));
     socket.on('answer', (d) => socket.to(d.roomId).emit('answer', d));
     socket.on('iceCandidate', (d) => socket.to(d.roomId).emit('iceCandidate', d));
     socket.on('endCall', (d) => socket.to(d.roomId).emit('endCall'));

@@ -258,7 +258,21 @@
 .archived-item { opacity:0.85; }
 .pinned-chats { background: #fff; border-bottom: 1px solid #f0f2f5; }
         .pin-header { padding: 10px 15px; font-size: 14px; font-weight: 500; color: #008069; display: flex; justify-content: space-between; align-items: center; }
-    /* --- CALL SCREEN --- */
+    .incoming-call-screen { position: fixed; inset: 0; background: linear-gradient(180deg,#0b141a 0%,#1f2c33 100%); z-index: 6000; display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 80px 20px 60px; }
+.incoming-call-screen.active { display: flex; }
+.ic-header { text-align: center; color: #fff; }
+.ic-avatar { width: 120px; height: 120px; border-radius: 50%; background: #00a884; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 48px; margin: 0 auto 20px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,168,132,0.7); } 50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(0,168,132,0); } }
+.ic-name { font-size: 26px; font-weight: 500; margin-bottom: 8px; }
+.ic-type { font-size: 15px; color: #8696a0; }
+.ic-actions { display: flex; gap: 60px; }
+.ic-btn { width: 80px; height: 80px; border-radius: 50%; border: none; color: #fff; font-size: 28px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.ic-btn span { font-size: 11px; font-weight: 500; }
+.ic-decline { background: #e74c3c; }
+.ic-decline:hover { background: #c0392b; }
+.ic-accept { background: #25d366; }
+.ic-accept:hover { background: #1ea952; }
+/* --- CALL SCREEN --- */
 .call-screen {
     position: fixed;
     inset: 0;
@@ -714,9 +728,108 @@
     border-radius: 50%;
     background: #d9fdd3;
 }
+
+/* ============ SPLASH SCREEN ============ */
+:root{
+  --splashscreen-primary-title:#0A0A0A;
+  --splashscreen-progress-background:#e9edef;
+  --splashscreen-progress-primary:#00c298;
+  --splashscreen-secondary-lighter:#5B6368;
+  --splashscreen-startup-background:#F7F5F3;
+  --splashscreen-startup-icon:#bbc5cb;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --splashscreen-primary-title:#F7F8FA;
+    --splashscreen-progress-background:#233138;
+    --splashscreen-progress-primary:#0b846d;
+    --splashscreen-secondary-lighter:#8D9599;
+    --splashscreen-startup-background:#0A1014;
+    --splashscreen-startup-icon:#676f73;
+  }
+}
+
+#wa_web_initial_startup{
+  position:fixed; inset:0; z-index:99999;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background:var(--splashscreen-startup-background);
+  color:var(--splashscreen-startup-icon);
+  transition:opacity .45s ease;
+}
+#wa_web_initial_startup.hide{ opacity:0; pointer-events:none; }
+#wa_web_initial_startup ._apdm{
+  display:flex; align-items:center; justify-content:center;
+  animation:__pop .6s cubic-bezier(.2,.8,.3,1.2) both;
+}
+#wa_web_initial_startup ._apdm svg{ display:block; }
+@keyframes __pop{
+  from{ transform:scale(.82); opacity:0; }
+  to  { transform:scale(1);   opacity:1; }
+}
+#wa_web_initial_startup ._apdr{
+  margin-top:18px; font-size:1.75rem; font-weight:500;
+  letter-spacing:.2px; color:var(--splashscreen-primary-title);
+  opacity:0; animation:__rise .5s ease .18s both;
+}
+#wa_web_initial_startup ._apdq{
+  margin-top:30px; width:190px; max-width:60vw;
+  opacity:0; animation:__rise .5s ease .3s both;
+}
+#wa_web_initial_startup ._apdq progress{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; height:4px;
+  border:none; border-radius:99px; overflow:hidden;
+  background:var(--splashscreen-progress-background);
+}
+#wa_web_initial_startup ._apdq progress::-webkit-progress-bar{
+  background:var(--splashscreen-progress-background); border-radius:99px;
+}
+#wa_web_initial_startup ._apdq progress::-webkit-progress-value{
+  background:var(--splashscreen-progress-primary);
+  border-radius:99px; transition:width .18s ease-out;
+}
+#wa_web_initial_startup ._apdq progress::-moz-progress-bar{
+  background:var(--splashscreen-progress-primary); border-radius:99px;
+}
+#wa_web_initial_startup ._apds{
+  position:absolute; left:0; right:0; bottom:0;
+  display:flex; align-items:center; justify-content:center;
+  gap:7px; padding:0 16px 42px;
+  font-size:.875rem; color:var(--splashscreen-secondary-lighter);
+  opacity:0; animation:__rise .5s ease .45s both;
+}
+#wa_web_initial_startup ._apds span{ display:flex; align-items:center; }
+@keyframes __rise{
+  from{ opacity:0; transform:translateY(8px); }
+  to  { opacity:1; transform:translateY(0); }
+}
 </style>
 </head>
 <body>
+
+<!-- ================= SPLASH SCREEN ================= -->
+<div id="wa_web_initial_startup" class="_apdl">
+  <div class="_apdm">
+    <span>
+      <svg width="96" height="96" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path fill="currentColor" d="M37.7 31.2c-.6-.4-3.8-2-4.4-2.1-.6-.2-1-.4-1.4.3l-2 2.5c-.4.4-.8.5-1.5.2-.6-.3-2.7-1-5.1-3.2-2-1.7-3.2-3.8-3.6-4.5-.4-.6 0-1 .3-1.3l1-1.1.6-1.1c.2-.4 0-.8 0-1.1l-2-4.8c-.6-1.3-1.1-1-1.5-1.1h-1.2c-.5 0-1.2.1-1.8.8-.5.6-2.2 2.2-2.2 5.3 0 3.2 2.3 6.3 2.6 6.7.3.4 4.6 7 11 9.7l3.7 1.4c1.5.5 3 .4 4 .2 1.3-.1 3.9-1.5 4.4-3 .5-1.5.5-2.8.4-3-.2-.4-.6-.5-1.3-.8M26 47.2c-3.9 0-7.6-1-11-3l-.7-.4-8.1 2L8.4 38l-.6-.8A21.4 21.4 0 0 1 26 4.4a21.3 21.3 0 0 1 21.4 21.4c0 11.8-9.6 21.4-21.4 21.4M44.2 7.6a25.8 25.8 0 0 0-40.6 31L0 52l13.7-3.6A25.8 25.8 0 0 0 44.3 7.5"></path>
+      </svg>
+    </span>
+  </div>
+  <div class="_apdr">WhatsApp</div>
+  <div class="_apdq">
+    <progress value="0" max="100" dir="ltr"></progress>
+  </div>
+  <div class="_apds">
+    <span>
+      <svg width="17" height="17" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path fill="currentColor" d="M6 22C5.45 22 4.97917 21.8042 4.5875 21.4125C4.19583 21.0208 4 20.55 4 20V10C4 9.45 4.19583 8.97917 4.5875 8.5875C4.97917 8.19583 5.45 8 6 8H7V6C7 4.61667 7.4875 3.4375 8.4625 2.4625C9.4375 1.4875 10.6167 1 12 1C13.3833 1 14.5625 1.4875 15.5375 2.4625C16.5125 3.4375 17 4.61667 17 6V8H18C18.55 8 19.0208 8.19583 19.4125 8.5875C19.8042 8.97917 20 9.45 20 10V20C20 20.55 19.8042 21.0208 19.4125 21.4125C19.0208 21.8042 18.55 22 18 22H6ZM6 20H18V10H6V20ZM12 17C12.55 17 13.0208 16.8042 13.4125 16.4125C13.8042 16.0208 14 15.55 14 15C14 14.45 13.8042 13.9792 13.4125 13.5875C13.0208 13.1958 12.55 13 12 13C11.45 13 10.9792 13.1958 10.5875 13.5875C10.1958 13.9792 10 14.45 10 15C10 15.55 10.1958 16.0208 10.5875 16.4125C10.9792 16.8042 11.45 17 12 17ZM9 8H15V6C15 5.16667 14.7083 4.45833 14.125 3.875C13.5417 3.29167 12.8333 3 12 3C11.1667 3 10.4583 3.29167 9.875 3.875C9.29167 4.45833 9 5.16667 9 6V8Z"></path>
+      </svg>
+    </span>
+    <span>End-to-end encrypted</span>
+  </div>
+</div>
 
 <!-- Auth Screen -->
 <div class="auth-screen" id="authScreen">
@@ -857,8 +970,9 @@
             <div class="chip plus" onclick="workInProgress('New list')">+</div>
         </div>
 
-        <div class="pinned-chats"><div class="pin-header"><span>Pinned</span><i class="fas fa-chevron-down"></i></div></div>
+                <div class="pinned-chats"><div class="pin-header"><span>Pinned</span><i class="fas fa-chevron-down"></i></div></div>
                 <div id="chatList"></div>
+<div id="archivedList"></div>
     </div>
     <div class="screen" id="updatesScreen">
         <div class="status-header">Updates <i class="fas fa-search"></i> <i class="fas fa-ellipsis-v"></i></div>
@@ -1326,6 +1440,17 @@
     </div>
 </div>
 
+<div class="incoming-call-screen" id="incomingCallScreen">
+    <div class="ic-header">
+        <div class="ic-avatar" id="icAvatar">R</div>
+        <div class="ic-name" id="icName">Rahul Sharma</div>
+        <div class="ic-type" id="icType">Incoming audio call</div>
+    </div>
+    <div class="ic-actions">
+        <button class="ic-btn ic-decline" onclick="declineCall()"><i class="fas fa-phone-slash"></i><span>Decline</span></button>
+        <button class="ic-btn ic-accept" onclick="acceptCall()"><i class="fas fa-phone"></i><span>Accept</span></button>
+    </div>
+</div>
 <!-- Call Screen -->
 <div class="call-screen" id="callScreen">
     <div class="call-header">
@@ -1493,13 +1618,12 @@ async function showQrForLinking() {
         width: 200,
         height: 200
     });
-
     socket.once('qr-login-success', (userData) => {
+        const user = { id: userData.id || userData.userId, name: userData.name, identifier: userData.identifier, avatarUrl: userData.avatarUrl };
         localStorage.setItem('wa_token', userData.token);
-        localStorage.setItem('wa_user', JSON.stringify(userData));
-        currentUser = userData;
-        afterLogin();
+        localStorage.setItem('wa_user', JSON.stringify(user));
         alert('Device linked successfully!');
+        location.reload();
     });
 }
 
@@ -2192,17 +2316,39 @@ function logout() {
     location.reload();
 }
 
-// Auto-login if token exists
+// --- SPLASH SCREEN + AUTO-LOGIN ---
 (function () {
+    const bar = document.querySelector('#wa_web_initial_startup progress');
+    const splash = document.getElementById('wa_web_initial_startup');
+
+    // Animate progress bar like WhatsApp Web boot
+    let value = 0;
+    const timer = setInterval(() => {
+        const remaining = 100 - value;
+        value += Math.max(1.5, remaining * 0.08 + Math.random() * 3);
+        if (value >= 100) { value = 100; clearInterval(timer); }
+        if (bar) bar.value = value;
+    }, 60);
+
+    // Hide splash after minimum 1.6s
+    function reveal() {
+        splash.classList.add('hide');
+        setTimeout(() => splash.remove(), 500);
+    }
+
     const t = localStorage.getItem('wa_token');
     const u = localStorage.getItem('wa_user');
-    if (t && u) {
-        authToken = t;
-        currentUser = JSON.parse(u);
-        afterLogin();
-    } else {
-        document.getElementById('authScreen').style.display = 'flex';
-    }
+
+    setTimeout(() => {
+        if (t && u) {
+            authToken = t;
+            currentUser = JSON.parse(u);
+            afterLogin();
+        } else {
+            document.getElementById('authScreen').style.display = 'flex';
+        }
+        reveal();
+    }, 1700);
 })();
 // --- WEBRTC SETUP ---
 const rtcConfig = {
@@ -2232,16 +2378,18 @@ const rtcConfig = {
     iceCandidatePoolSize: 10
 };
 
+let currentCallType = 'audio';
 let localStream = null;
 let peerConnection = null;
 let currentRoomId = null;
 let offerSent = false;
 
 // Ask for camera + microphone access
-async function getLocalMedia() {
+async function getLocalMedia(wantVideo) {
+    if (wantVideo === undefined) wantVideo = true;
     try {
         localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: wantVideo,
             audio: true
         });
         console.log('✅ Got local media. Video tracks:', localStream.getVideoTracks().length, 'Audio tracks:', localStream.getAudioTracks().length);
@@ -2308,29 +2456,102 @@ async function startCall(name, color) {
 
        // Join room and WAIT for the other peer to join
     socket.emit('joinRoom', currentRoomId);
+    socket.emit('callType', { roomId: currentRoomId, callType: 'audio' });
 }
 
 // --- HANDLE INCOMING OFFER (receiver side) ---
+let pendingOffer = null;
+let pendingRoomId = null;
+let ringtoneInterval = null;
+let ringAudioCtx = null;
+
 async function handleOffer(data) {
     console.log('📞 Incoming call...');
+    pendingOffer = data.offer;
+    pendingRoomId = data.roomId;
     currentRoomId = data.roomId;
 
-    document.getElementById('callName').innerText = 'Incoming Call';
+    // Extract caller name from room ID
+    const parts = data.roomId.replace('call_','').split('_');
+    const myId = getMyId();
+    const callerId = parts.find(p => p !== myId) || 'Unknown';
+    let callerName = 'Unknown caller';
+    try {
+        const ur = await fetch('/api/users');
+        const users = await ur.json();
+        const c = users.find(u => u._id === callerId);
+        if (c) callerName = c.name;
+    } catch(e) {}
+
+    document.getElementById('icName').innerText = callerName;
+    document.getElementById('icAvatar').innerText = callerName.charAt(0).toUpperCase();
+    document.getElementById('icType').innerText = 'Incoming ' + (data.callType === 'video' ? 'video' : 'audio') + ' call';
+    document.getElementById('incomingCallScreen').classList.add('active');
+
+    // Start ringing sound
+    playRingtone();
+}
+
+function playRingtone() {
+    try {
+        if (!ringAudioCtx) ringAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ringAudioCtx.state === 'suspended') ringAudioCtx.resume();
+        const ring = () => {
+            const now = ringAudioCtx.currentTime;
+            for (let i = 0; i < 2; i++) {
+                const osc = ringAudioCtx.createOscillator();
+                const gain = ringAudioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now + i * 0.5);
+                osc.frequency.setValueAtTime(480, now + i * 0.5 + 0.25);
+                gain.gain.setValueAtTime(0.15, now + i * 0.5);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.5 + 0.4);
+                osc.connect(gain);
+                gain.connect(ringAudioCtx.destination);
+                osc.start(now + i * 0.5);
+                osc.stop(now + i * 0.5 + 0.4);
+            }
+        };
+        ring();
+        ringtoneInterval = setInterval(ring, 2000);
+    } catch(e) { console.warn('Ringtone error:', e); }
+}
+
+function stopRingtone() {
+    if (ringtoneInterval) { clearInterval(ringtoneInterval); ringtoneInterval = null; }
+}
+
+async function acceptCall() {
+    stopRingtone();
+    document.getElementById('incomingCallScreen').classList.remove('active');
+    document.getElementById('callName').innerText = document.getElementById('icName').innerText;
     document.getElementById('callStatus').innerText = 'Connecting...';
     document.getElementById('callScreen').style.display = 'flex';
 
     if (!localStream) {
-        const stream = await getLocalMedia();
-        if (!stream) return;
+        const stream = await getLocalMedia(pendingCallType === 'video');
+        if (!stream) { declineCall(); return; }
         document.getElementById('localVideo').srcObject = stream;
     }
 
     if (peerConnection) { peerConnection.close(); peerConnection = null; }
     createPeerConnection();
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(pendingOffer));
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     socket.emit('answer', { roomId: currentRoomId, answer });
+    pendingOffer = null;
+}
+
+function declineCall() {
+    stopRingtone();
+    document.getElementById('incomingCallScreen').classList.remove('active');
+    if (currentRoomId) socket.emit('endCall', { roomId: currentRoomId });
+    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    currentRoomId = null;
+    pendingOffer = null;
+    console.log('📴 Call declined');
 }
 
 // --- HANDLE ANSWER (caller side) ---
@@ -2565,6 +2786,8 @@ async function doStartVoice(name, peerId) {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     } catch (e) { alert('Mic permission denied'); endCall(); return; }
     document.getElementById('localVideo').srcObject = localStream;
+        currentCallType = 'audio';
+        currentCallType = 'audio';
     socket.emit('joinRoom', currentRoomId);
     logCall('outgoing');
 }
@@ -2583,6 +2806,8 @@ async function doStartVideo(name, peerId) {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
     } catch (e) { alert('Camera/Mic permission denied'); endCall(); return; }
     document.getElementById('localVideo').srcObject = localStream;
+        socket.emit('joinRoom', currentRoomId);
+        currentCallType = 'video';
     socket.emit('joinRoom', currentRoomId);
     logCall('outgoing');
 }
@@ -3385,8 +3610,9 @@ socket.on('userJoined', async () => {
     createPeerConnection();
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    socket.emit('offer', { roomId: currentRoomId, offer });
+                socket.emit('offer', { roomId: currentRoomId, offer, callType: currentCallType });
 });
+
 socket.on('newCallLogged', () => {
     if (document.getElementById('callsScreen').classList.contains('active')) loadCalls();
 });
