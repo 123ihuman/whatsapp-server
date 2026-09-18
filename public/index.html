@@ -624,6 +624,16 @@
     border-radius: 50%;
     background: #25d366 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.4 5L2 22l5-1.4c1.5.9 3.2 1.4 5 1.4 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>') center/70% no-repeat;
 }
+.icon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:30px 25px;}
+.icon-item{width:80px;height:80px;border-radius:50%;margin:0 auto;cursor:pointer;position:relative;border:3px solid transparent;transition:transform .15s;}
+.icon-item:hover{transform:scale(1.08);}
+.icon-item.selected{border-color:#00a884;}
+.icon-item.selected::after{content:"✓";position:absolute;bottom:-4px;right:-4px;background:#111b21;color:#fff;width:22px;height:22px;border-radius:50%;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
+.theme-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:30px 25px;}
+.theme-item{width:60px;height:60px;border-radius:50%;margin:0 auto;cursor:pointer;border:3px solid transparent;transition:transform .15s;position:relative;}
+.theme-item:hover{transform:scale(1.08);}
+.theme-item.selected{border-color:#00a884;}
+.theme-item.selected::after{content:"✓";position:absolute;bottom:-4px;right:-4px;background:#111b21;color:#fff;width:20px;height:20px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
 .theme-circle {
     width: 28px; height: 28px;
     border-radius: 50%;
@@ -781,7 +791,9 @@
     <div class="fab" id="mainFab" onclick="openNewGroupScreen()"><i class="fas fa-plus"></i></div>
 
     <div class="bottom-nav">
-        <div class="nav-item active chats-active" onclick="switchTab('chatsScreen')" id="navChats"><i class="fas fa-comments"></i><span>Chats</span><div class="badge">14</div></div>
+        <div class="nav-item active chats-active" onclick="switchTab('chatsScreen')" id="navChats"><i class="fas fa-comments"></i><span>Chats</span><div class="badge" id="totalUnreadBadge" style="display:none;"></div>
+
+</div>
         <div class="nav-item" onclick="switchTab('updatesScreen')" id="navUpdates"><i class="fas fa-circle-notch"></i><span>Updates</span></div>
         <div class="nav-item" onclick="switchTab('communitiesScreen')" id="navComm"><i class="fas fa-users"></i><span>Communities</span></div>
         <div class="nav-item" onclick="switchTab('callsScreen')" id="navCalls"><i class="fas fa-phone-alt"></i><span>Calls</span></div>
@@ -1057,7 +1069,7 @@
                     <div class="settings-row-text">Media visibility<br><span class="settings-sub">Show newly downloaded media in your device's gallery</span></div>
                     <div class="toggle on"><i class="fas fa-check"></i></div>
                 </div>
-                <div class="settings-row" onclick="workInProgress('Font size')"><div class="settings-row-text">Font size<br><span class="settings-sub">Medium</span></div></div>
+                <div class="settings-row" onclick="openSettings('fontSize')"><div class="settings-row-text">Font size<br><span class="settings-sub">Medium</span></div></div>
                 <div class="settings-row" onclick="workInProgress('Voice message transcripts')"><div class="settings-row-text">Voice message transcripts<br><span class="settings-sub">Read new voice messages.</span></div></div>
             </div>
             <div class="settings-section-title">Archived chats</div>
@@ -1072,6 +1084,7 @@
                 <div class="settings-row" onclick="workInProgress('Transfer chats')"><div class="settings-icon"><i class="fas fa-exchange-alt"></i></div><div class="settings-row-text">Transfer chats</div></div>
                 <div class="settings-row" onclick="workInProgress('Chat history')"><div class="settings-icon"><i class="fas fa-history"></i></div><div class="settings-row-text">Chat history</div></div>
                 <div class="settings-row" onclick="workInProgress('Private Processing')"><div class="settings-icon"><i class="fas fa-lock"></i></div><div class="settings-row-text">Private Processing</div></div>
+<div class="settings-row" onclick="openSettings('fontSize')">
             </div>
         </div>
 
@@ -1144,12 +1157,12 @@
                     <div class="settings-icon premium"><i class="fas fa-crown"></i></div>
                     <div class="settings-row-text" style="color:#00a884;font-weight:600;">WhatsApp Plus</div>
                 </div>
-                <div class="settings-row" onclick="workInProgress('App icon')">
+                <div class="settings-row" onclick="openSettings('appIcon')">
                     <div class="settings-icon"><i class="fas fa-th"></i></div>
                     <div class="settings-row-text">App icon</div>
                     <div class="app-icon-preview"></div>
                 </div>
-                <div class="settings-row" onclick="workInProgress('App theme')">
+                <div class="settings-row" onclick="openSettings('appTheme')">
                     <div class="settings-icon"><i class="fas fa-palette"></i></div>
                     <div class="settings-row-text">App theme</div>
                     <div class="theme-circle"></div>
@@ -1160,6 +1173,33 @@
                     <div class="settings-row-text" style="color:#667781;font-size:14px;">Subscribe to WhatsApp Plus to change your app icon, theme and more. <span style="color:#00a884;">Explore benefits</span></div>
                 </div>
             </div>
+        <!-- APP ICON -->
+        <div class="settings-page" id="set_appIcon">
+            <div class="settings-topbar"><i class="fas fa-arrow-left" onclick="openSettings('appearance')"></i><div class="settings-title">App icon</div></div>
+            <div class="icon-grid" id="iconGrid"></div>
+            <div class="settings-list" style="border-top:none;">
+                <div class="settings-row" onclick="workInProgress('WhatsApp Plus')" style="justify-content:center;text-align:center;">
+                    <div class="settings-row-text" style="color:#667781;font-size:14px;">Change your app icon with WhatsApp Plus. <span style="color:#00a884;font-weight:600;">Get WhatsApp Plus</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- APP THEME -->
+        <div class="settings-page" id="set_appTheme">
+            <div class="settings-topbar"><i class="fas fa-arrow-left" onclick="openSettings('appearance')"></i><div class="settings-title">App theme</div></div>
+            <div class="theme-grid" id="themeGrid"></div>
+        </div>
+
+        <!-- FONT SIZE -->
+        <div class="settings-page" id="set_fontSize">
+            <div class="settings-topbar"><i class="fas fa-arrow-left" onclick="openSettings('chats')"></i><div class="settings-title">Font size</div></div>
+            <div style="padding:30px 20px;text-align:center;">
+                <div id="fontPreview" style="font-size:17px;color:#111b21;line-height:1.5;padding:20px;background:#efeae2;border-radius:12px;margin-bottom:30px;">This is a preview of your chat font size. Try different sizes below.</div>
+                <input type="range" id="fontSlider" min="13" max="22" step="1" value="17" style="width:100%;" oninput="updateFontPreview(this.value)">
+                <div style="display:flex;justify-content:space-between;margin-top:15px;color:#667781;font-size:13px;"><span>Small</span><span>Medium</span><span>Large</span></div>
+            </div>
+            <button class="settings-cta" onclick="saveFontSize()">Save</button>
+        </div>
         </div>
 
         <!-- LINKED DEVICES -->
@@ -1462,6 +1502,7 @@ async function openChatWindow(name, userId) {
     document.getElementById('chatWindow').style.display = 'flex';
     document.getElementById('selectContactScreen').style.display = 'none';
     document.getElementById('mainFab').style.display = 'none';
+    if (unreadData.rooms[activeRoomId]) { unreadData.rooms[activeRoomId] = 0; unreadData.total = Math.max(0, unreadData.total - 1); refreshUnread(); }
 }
 
 function renderMessage(m) {
@@ -1789,6 +1830,8 @@ function afterLogin() {
     if (socket.connected) socket.emit('userOnline', currentUser.id);
     loadContacts();
     loadStatuses();
+    requestNotificationPermission();
+    setInterval(refreshUnread, 15000);
 }
 
 socket.on('onlineUsers', (ids) => {
@@ -2418,6 +2461,9 @@ function openSettings(page) {
     document.querySelectorAll('.settings-page').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('set_' + page);
     if (target) target.classList.add('active');
+    if (page === 'appIcon') renderIconGrid();
+    if (page === 'appTheme') renderThemeGrid();
+    if (page === 'fontSize') { const v = localStorage.getItem('wa_font') || '17'; document.getElementById('fontSlider').value = v; updateFontPreview(v); }
 
     // Populate profile header on the home page
     if (page === 'home') {
@@ -2443,6 +2489,89 @@ function closeSettings() {
 
 function closeDrawer() {
     document.getElementById('threeDotMenu').style.display = 'none';
+}
+const APP_ICONS = [
+  { name: 'Default', bg: '#25d366', fg: '#ffffff' },
+  { name: 'Light', bg: '#e7fce3', fg: '#00a884' },
+  { name: 'Dark', bg: '#111b21', fg: '#25d366' },
+  { name: 'Black', bg: '#000000', fg: '#ffffff' },
+  { name: 'Sunset', bg: 'linear-gradient(135deg,#ff9a3c,#ff4b8b)', fg: '#ffffff' },
+  { name: 'Ocean', bg: 'linear-gradient(135deg,#00c6ff,#0072ff)', fg: '#ffffff' },
+  { name: 'Purple', bg: 'linear-gradient(135deg,#a18cd1,#fbc2eb)', fg: '#4a148c' },
+  { name: 'Mint', bg: '#a8e6cf', fg: '#008069' },
+  { name: 'Rose', bg: '#ffd3e0', fg: '#d81b60' }
+];
+const APP_THEMES = [
+  { name: 'Green', bg: '#00a884' }, { name: 'Teal', bg: '#00897b' }, { name: 'Blue', bg: '#0d6efd' },
+  { name: 'Purple', bg: '#7c3aed' }, { name: 'Pink', bg: '#e91e63' }, { name: 'Red', bg: '#e74c3c' },
+  { name: 'Orange', bg: '#f39c12' }, { name: 'Grey', bg: '#54656f' }
+];
+function renderIconGrid() {
+  const g = document.getElementById('iconGrid'); if (!g) return;
+  const saved = localStorage.getItem('wa_icon') || 'Default';
+  g.innerHTML = '';
+  APP_ICONS.forEach(ic => {
+    const d = document.createElement('div');
+    d.className = 'icon-item' + (ic.name === saved ? ' selected' : '');
+    d.style.background = ic.bg;
+    d.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-comment" style="font-size:36px;color:' + ic.fg + ';"></i></div>';
+    d.onclick = () => { playClickSound(); localStorage.setItem('wa_icon', ic.name); renderIconGrid(); applyAppIcon(ic); };
+    g.appendChild(d);
+  });
+}
+function applyAppIcon(ic) {
+  const logo = document.querySelector('.logo');
+  if (!logo) return;
+  logo.style.color = ic.fg;
+  document.documentElement.style.setProperty('--accent', ic.bg);
+}
+function renderThemeGrid() {
+  const g = document.getElementById('themeGrid'); if (!g) return;
+  const saved = localStorage.getItem('wa_theme') || 'Green';
+  g.innerHTML = '';
+  APP_THEMES.forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'theme-item' + (t.name === saved ? ' selected' : '');
+    d.style.background = t.bg;
+    d.onclick = () => { playClickSound(); localStorage.setItem('wa_theme', t.name); renderThemeGrid(); applyAppTheme(t.bg); };
+    g.appendChild(d);
+  });
+}
+function applyAppTheme(color) {
+  document.documentElement.style.setProperty('--primary', color);
+  document.querySelectorAll('.nav-item.active, .nav-item.active span, .fab, .send-btn, .btn-green, .auth-box button, .settings-cta').forEach(el => el.style.background = color);
+  const logo = document.querySelector('.logo'); if (logo) logo.style.color = color;
+}
+function updateFontPreview(v) { document.getElementById('fontPreview').style.fontSize = v + 'px'; }
+function saveFontSize() {
+  const v = document.getElementById('fontSlider').value;
+  localStorage.setItem('wa_font', v);
+  applyFontSize(v);
+  alert('Font size saved');
+}
+function applyFontSize(v) {
+  const style = document.getElementById('dynamicFontStyle') || document.createElement('style');
+  style.id = 'dynamicFontStyle';
+  style.innerText = `.msg{font-size:${v}px !important;}.chat-msg{font-size:${v-3}px !important;}.chat-name{font-size:${parseInt(v)+2}px !important;}`;
+  document.head.appendChild(style);
+}
+(function initPrefs() {
+  const t = localStorage.getItem('wa_theme');
+  if (t) { const th = APP_THEMES.find(x => x.name === t); if (th) setTimeout(() => applyAppTheme(th.bg), 100); }
+  const f = localStorage.getItem('wa_font');
+  if (f) { const s = document.getElementById('fontSlider'); if (s) s.value = f; setTimeout(() => applyFontSize(f), 100); }
+  setTimeout(renderIconGrid, 100); setTimeout(renderThemeGrid, 100);
+})();
+function showNotification(title, body, msg) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (!document.hidden && msg.roomId === activeRoomId) return;
+  const n = new Notification(title, { body, icon: '/whatsapp-bg.png', tag: msg.roomId });
+  n.onclick = () => { window.focus(); if (msg.roomId !== activeRoomId) { /* could open chat */ } n.close(); };
+}
+function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') Notification.requestPermission();
 }
 function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');}
 function closeChatMenu(){document.getElementById('chatMenu').classList.remove('active');}
@@ -2493,6 +2622,10 @@ socket.on('newMessage', (msg) => {
     renderMessage(msg);
     if (msg.sender !== getMyId()) {
         playReceiveSound();
+      showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
+      if (document.hidden) refreshUnread();
+      showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
+      if (document.hidden) refreshUnread();
         // If the chat is open, mark incoming messages as read immediately
         fetch('/api/messages/read', {
             method: 'POST',
@@ -2520,6 +2653,28 @@ function filterChats(query) {
     });
 }
 
+let unreadData = { rooms: {}, total: 0 };
+async function refreshUnread() {
+  try {
+    const r = await fetch('/api/unread/' + getMyId());
+    unreadData = await r.json();
+    const badge = document.getElementById('totalUnreadBadge');
+    if (badge) { badge.innerText = unreadData.total; badge.style.display = unreadData.total > 0 ? 'flex' : 'none'; }
+    applyUnreadToChats();
+  } catch (e) {}
+}
+function applyUnreadToChats() {
+  document.querySelectorAll('#chatList .chat-item').forEach(el => {
+    const roomId = el.dataset.roomId;
+    if (!roomId) return;
+    let b = el.querySelector('.unread-count');
+    const c = unreadData.rooms[roomId] || 0;
+    if (c > 0) {
+      if (!b) { b = document.createElement('div'); b.className = 'unread unread-count'; el.querySelector('.chat-row-2').appendChild(b); }
+      b.innerText = c;
+    } else if (b) b.remove();
+  });
+}
 async function loadContacts() {
     try {
         const res = await fetch('/api/users');
@@ -2533,6 +2688,7 @@ async function loadContacts() {
         // "My Number" entry — clicking avatar triggers upload, clicking row opens self-chat
         const meRow = document.createElement('div');
         meRow.className = 'chat-item';
+meRow.dataset.roomId = makeRoomId(getMyId(), getMyId());
         meRow.dataset.filter = 'all';
         meRow.innerHTML = `
             <div class="avatar" style="background:#00a884;" onclick="event.stopPropagation();triggerAvatarUpload()">
@@ -2553,6 +2709,7 @@ async function loadContacts() {
                 : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`;
             const el = document.createElement('div');
             el.className = 'chat-item';
+el.dataset.roomId = makeRoomId(getMyId(), u._id);
             el.onclick = () => openChatWindow(u.name, u._id);
             const avatarHtml = u.avatarUrl
                 ? `<img src="${u.avatarUrl}" alt="">`
@@ -2567,6 +2724,7 @@ async function loadContacts() {
         });
 
         applyChatFilter();
+refreshUnread();
     } catch (err) {
         console.warn('loadContacts failed:', err);
     }

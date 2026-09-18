@@ -174,6 +174,18 @@ app.post('/api/messages/delete', async (req, res) => {
     }
 });
 
+app.get('/api/unread/:userId', async (req, res) => {
+  try {
+    const uid = req.params.userId;
+    const msgs = await Message.aggregate([
+      { $match: { read: false, sender: { $ne: uid }, deleted: false } },
+      { $group: { _id: '$roomId', count: { $sum: 1 } } }
+    ]);
+    const rooms = {}; let total = 0;
+    for (const m of msgs) { if (m._id.includes(uid)) { rooms[m._id] = m.count; total += m.count; } }
+    res.json({ rooms, total });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // ---------- AUTH ROUTES ----------
 app.post('/api/signup', async (req, res) => {
     try {
