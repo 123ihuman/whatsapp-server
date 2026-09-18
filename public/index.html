@@ -417,8 +417,9 @@
         <div class="header">
             <div class="logo">WhatsApp</div>
             <div class="header-actions">
-                <span class="rupee-icon">₹</span>
-                <i class="fas fa-camera"></i>
+                <span class="rupee-icon" onclick="openUPI()">₹</span>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="sendCameraPhoto(event)">
+<i class="fas fa-camera" onclick="document.getElementById('cameraInput').click()" style="cursor:pointer;"></i>
                 <i class="fas fa-ellipsis-v" onclick="toggleThreeDot()"></i>
             </div>
         </div>
@@ -952,6 +953,37 @@ async function sendMediaFile(event) {
         alert('Upload failed: ' + err.message);
     }
 }
+// --- CAMERA CAPTURE ---
+async function sendCameraPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = '';
+
+    // If a chat is open, send the photo directly to it
+    if (activeRoomId) {
+        const formData = new FormData();
+        formData.append('media', file);
+        try {
+            const res = await fetch('/api/message-media', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!data.url) throw new Error('Upload failed');
+            socket.emit('sendMessage', {
+                roomId: activeRoomId,
+                sender: getMyId(),
+                senderName: getMyName(),
+                text: '',
+                mediaUrl: data.url,
+                mediaType: 'image'
+            });
+            playSendSound();
+        } catch (err) {
+            alert('Failed to send photo: ' + err.message);
+        }
+    } else {
+        // No chat open → suggest opening one
+        alert('Open a chat first to send the photo. Or use the "Add status" screen for status photos.');
+    }
+}
 
 // --- VOICE RECORDING ---
 let mediaRecorder = null;
@@ -997,6 +1029,18 @@ async function toggleVoiceRecording() {
     } else {
         mediaRecorder.stop();
         isRecording = false;
+    }
+}
+// --- UPI / Google Pay ---
+function openUPI() {
+    // Try Google Pay / PhonePe / Paytm via UPI deep link
+    const upiUrl = 'upi://pay?pa=example@upi&pn=WhatsApp&cu=INR';
+    // On mobile → UPI apps open. On desktop → fallback to Google Pay web
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+        window.location.href = upiUrl;
+    } else {
+        window.open('https://pay.google.com/', '_blank');
     }
 }
 
