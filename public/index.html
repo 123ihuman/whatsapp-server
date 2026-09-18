@@ -181,31 +181,6 @@
     cursor: pointer;
     padding: 4px;
 }
-
-/* ---------- DARK MODE ---------- */
-@media (prefers-color-scheme: dark) {
-    body { background: #0b141a; }
-    .app-container { background: #111b21; }
-    .header, .chat-window-header, .search-section, .chips, .pinned-chats,
-    .bottom-nav, .chat-input, .select-contact-screen, .select-header,
-    .auth-screen, .status-viewer { background: #111b21 !important; }
-    .chat-window-header .name, .logo, .chat-name, .status-header,
-    .nav-item span, .call-name, .contact-header, .auth-box h2 { color: #e9edef; }
-    .chat-window-header i, .nav-item, .chat-input i, .header-actions i { color: #aebac1; }
-    .messages-area {
-        background-color: #0b141a;
-        background-image: linear-gradient(rgba(11,20,26,0.9), rgba(11,20,26,0.9)),
-                          url('/whatsapp-bg.png');
-    }
-    .msg-in  { background: #202c33; color: #e9edef; }
-    .msg-out { background: #005c4b; color: #e9edef; }
-    .msg-time { color: #8696a0; }
-    .chat-item { border-bottom: 1px solid #222d34; }
-    .chat-msg, .chat-time { color: #8696a0; }
-    .input-wrapper { background: #2a3942; }
-    .input-wrapper input { color: #e9edef; }
-    .bottom-nav { border-top: 1px solid #222d34; }
-}
         .send-btn {
     background: #00a884; color: white; border: none; border-radius: 50%;
     width: 45px; height: 45px; font-size: 20px; margin-left: 6px;
