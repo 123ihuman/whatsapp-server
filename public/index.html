@@ -3458,7 +3458,8 @@ async function loadContacts() {
     try {
         const res = await fetch('/api/users');
         const users = await res.json();
-        const chatList = document.getElementById('chatList');
+                const chatList = document.getElementById('chatList');
+        if (!chatList) { console.warn('chatList element not found'); return; }
         chatList.innerHTML = '';
 
         // Find my own record for the avatar
