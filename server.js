@@ -5,6 +5,9 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'change-this-in-production-9a8b7c6d';
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +31,29 @@ const statusSchema = new mongoose.Schema({
     createdAt:{ type: Date, default: Date.now, expires: 86400 }
 });
 const Status = mongoose.model('Status', statusSchema);
+// Message schema
+const messageSchema = new mongoose.Schema({
+    roomId:    { type: String, required: true },
+    sender:    { type: String, required: true },
+    senderName:{ type: String, required: true },
+    text:      { type: String, default: '' },
+    mediaUrl:  { type: String, default: null },
+    mediaType: { type: String, default: null },
+    replyTo:   { type: mongoose.Schema.Types.Mixed, default: null },
+    read:      { type: Boolean, default: false },
+    deleted:   { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now }
+});
+const Message = mongoose.model('Message', messageSchema);
+// User schema
+const userSchema = new mongoose.Schema({
+    identifier: { type: String, required: true, unique: true },
+    name:       { type: String, required: true },
+    password:   { type: String, required: true },
+    lastSeen:   { type: Date, default: Date.now },
+    createdAt:  { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
 
 // ---------- FILE UPLOADS ----------
 const uploadDir = path.join(__dirname, 'public', 'uploads');
@@ -76,9 +102,116 @@ app.get('/api/status', async (req, res) => {
     }
 });
 
+// ---------- MESSAGE MEDIA UPLOAD ----------
+app.post('/api/message-media', upload.single('media'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file' });
+        res.json({ url: `/uploads/${req.file.filename}` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- MESSAGE ROUTES ----------
+// Get messages for a room
+app.get('/api/messages/:roomId', async (req, res) => {
+    try {
+        const list = await Message.find({ roomId: req.params.roomId })
+                                 .sort({ createdAt: 1 })
+                                 .limit(200);
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+app.post('/api/messages/read', async (req, res) => {
+    try {
+        const { roomId, userId } = req.body;
+        await Message.updateMany(
+            { roomId, sender: { $ne: userId }, read: false },
+            { $set: { read: true } }
+        );
+        io.to(roomId).emit('messagesRead', { roomId });
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/messages/delete', async (req, res) => {
+    try {
+        const { msgId, userId } = req.body;
+        const msg = await Message.findById(msgId);
+        if (!msg) return res.status(404).json({ error: 'Not found' });
+        if (msg.sender !== userId) return res.status(403).json({ error: 'Not your message' });
+        msg.deleted = true;
+        msg.text = '';
+        msg.mediaUrl = null;
+        msg.mediaType = null;
+        msg.replyTo = null;
+        await msg.save();
+        io.to(msg.roomId).emit('messageDeleted', { msgId: msg._id, roomId: msg.roomId });
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- AUTH ROUTES ----------
+app.post('/api/signup', async (req, res) => {
+    try {
+        const { identifier, name, password } = req.body;
+        if (!identifier || !name || !password) return res.status(400).json({ error: 'Missing fields' });
+        const existing = await User.findOne({ identifier });
+        if (existing) return res.status(400).json({ error: 'User already exists' });
+        const hashed = await bcrypt.hash(password, 10);
+        const user = await User.create({ identifier, name, password: hashed });
+        const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
+        res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { identifier, password } = req.body;
+        if (!identifier || !password) return res.status(400).json({ error: 'Missing fields' });
+        const user = await User.findOne({ identifier });
+        if (!user) return res.status(400).json({ error: 'User not found' });
+        const ok = await bcrypt.compare(password, user.password);
+        if (!ok) return res.status(400).json({ error: 'Wrong password' });
+        const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
+        res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// List all users (for contacts) — excludes passwords
+app.get('/api/users', async (req, res) => {
+    try {
+        const list = await User.find({}, { password: 0 }).sort({ name: 1 });
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // ---------- SOCKET.IO ----------
+const onlineUsers = new Map(); // socketId -> userId
+
+function broadcastOnline() {
+    const uniqueUserIds = [...new Set(onlineUsers.values())];
+    io.emit('onlineUsers', uniqueUserIds);
+}
+
 io.on('connection', (socket) => {
     console.log('✅ User connected:', socket.id);
+
+    socket.on('userOnline', (userId) => {
+        onlineUsers.set(socket.id, userId);
+        broadcastOnline();
+    });
 
     socket.on('joinRoom', (roomId) => {
         socket.join(roomId);
@@ -88,8 +221,44 @@ io.on('connection', (socket) => {
     socket.on('answer', (d) => socket.to(d.roomId).emit('answer', d));
     socket.on('iceCandidate', (d) => socket.to(d.roomId).emit('iceCandidate', d));
     socket.on('endCall', (d) => socket.to(d.roomId).emit('endCall'));
+    socket.on('typing', (data) => {
+        socket.to(data.roomId).emit('typing', { from: data.senderName });
+    });
 
-    socket.on('disconnect', () => console.log('❌ User disconnected:', socket.id));
+           socket.on('sendMessage', async (data) => {
+        try {
+            const msg = await Message.create({
+                roomId:    data.roomId,
+                sender:    data.sender,
+                senderName:data.senderName,
+                text:      data.text || '',
+                mediaUrl:  data.mediaUrl || null,
+                mediaType: data.mediaType || null,
+                replyTo:   data.replyTo || null
+            });
+            io.to(data.roomId).emit('newMessage', msg);
+        } catch (err) {
+            console.error('Message save error:', err);
+        }
+    });
+
+    socket.on('joinChat', (roomId) => {
+        socket.join(roomId);
+        console.log(`📥 ${socket.id} joined chat ${roomId}`);
+    });
+
+    socket.on('disconnect', async () => {
+        console.log('❌ User disconnected:', socket.id);
+        const userId = onlineUsers.get(socket.id);
+        if (userId) {
+            onlineUsers.delete(socket.id);
+            const stillOnline = [...onlineUsers.values()].includes(userId);
+            if (!stillOnline) {
+                try { await User.findByIdAndUpdate(userId, { lastSeen: new Date() }); } catch (e) {}
+            }
+            broadcastOnline();
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;
