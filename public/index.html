@@ -2207,7 +2207,8 @@ function resetMicButton() {
     mic.classList.add('fa-microphone');
 }
 
-    // --- TYPING + INPUT LISTENER (must be at top level, not inside another function) ---    let typingCooldown = null;
+       // --- TYPING + INPUT LISTENER ---
+    let typingCooldown = null;
     document.getElementById('chatInput').addEventListener('input', function () {
         if (this.value.trim().length > 0 && activeRoomId && !typingCooldown) {
             socket.emit('typing', { roomId: activeRoomId, senderName: getMyName() });
@@ -2462,13 +2463,15 @@ async function startCall(name, color) {
 // --- HANDLE INCOMING OFFER (receiver side) ---
 let pendingOffer = null;
 let pendingRoomId = null;
+let pendingCallType = 'audio';
 let ringtoneInterval = null;
 let ringAudioCtx = null;
 
 async function handleOffer(data) {
     console.log('📞 Incoming call...');
-    pendingOffer = data.offer;
+        pendingOffer = data.offer;
     pendingRoomId = data.roomId;
+    pendingCallType = data.callType || 'audio';
     currentRoomId = data.roomId;
 
     // Extract caller name from room ID
