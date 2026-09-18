@@ -412,26 +412,17 @@
         </div>
     </div>
 
-    <div class="screen" id="callsScreen">
+        <div class="screen" id="callsScreen">
         <div class="calls-header">Calls <i class="fas fa-search"></i> <i class="fas fa-ellipsis-v"></i></div>
         <div class="quick-actions">
-            <div class="quick-act"><div class="quick-act-icon"><i class="fas fa-phone-alt"></i></div><span>Call</span></div>
-            <div class="quick-act"><div class="quick-act-icon"><i class="fas fa-calendar-alt"></i></div><span>Schedule</span></div>
-            <div class="quick-act"><div class="quick-act-icon"><i class="fas fa-th"></i></div><span>Keypad</span></div>
-            <div class="quick-act"><div class="quick-act-icon"><i class="far fa-heart"></i></div><span>Favorites</span></div>
+            <div class="quick-act" onclick="openContactPicker('audio')"><div class="quick-act-icon"><i class="fas fa-phone-alt"></i></div><span>Call</span></div>
+            <div class="quick-act" onclick="workInProgress('Schedule call')"><div class="quick-act-icon"><i class="fas fa-calendar-alt"></i></div><span>Schedule</span></div>
+            <div class="quick-act" onclick="openContactPicker('audio')"><div class="quick-act-icon"><i class="fas fa-th"></i></div><span>Keypad</span></div>
+            <div class="quick-act" onclick="workInProgress('Favorites')"><div class="quick-act-icon"><i class="far fa-heart"></i></div><span>Favorites</span></div>
         </div>
         <div class="recent-header">Recent</div>
-        
-        <!-- Masked Numbers -->
-        <div class="call-item"><div class="avatar"
-        style="background: url('https://placehold.co/100x100/ccc/555?text=+91'); background-size: cover; color: transparent;"></div><div class="call-details"><div class="call-name" style="color:#e74c3c;">+91 XXXXX XXXXX</div><div class="call-status missed"><i class="fas fa-phone-slash"></i> July 31, 4:14 PM</div></div><div class="call-icon"><i class="fas fa-phone-alt"></i></div></div>
-        <div class="call-item"><div class="avatar" style="background: url('https://placehold.co/100x100/ccc/555?text=+91'); background-size: cover; color: transparent;"></div><div class="call-details"><div class="call-name" style="color:#e74c3c;">+91 XXXXX XXXXX</div><div class="call-status missed"><i class="fas fa-phone-slash"></i> May 25, 11:11 AM</div></div><div class="call-icon"><i class="fas fa-phone-alt"></i></div></div>
-        <div class="call-item"><div class="avatar" style="background: url('https://placehold.co/100x100/ccc/555?text=+91'); background-size: cover; color: transparent;"></div><div class="call-details"><div class="call-name">+91 XXXXX XXXXX</div><div class="call-status outgoing"><i class="fas fa-phone"></i> Feb 23, 2:02 PM</div></div><div class="call-icon"><i class="fas fa-phone-alt"></i></div></div>
-        <div class="call-item"><div class="avatar" style="background: url('https://placehold.co/100x100/e67e22/FFFFFF?text=DS'); background-size: cover; color: transparent;"></div><div class="call-details"><div class="call-name">Dev Sir</div><div class="call-status outgoing"><i class="fas fa-phone"></i> Jan 30, 4:36 PM</div></div><div class="call-icon"><i class="fas fa-phone-alt"></i></div></div>
-        
-        <div class="fab" style="background: #00a884; bottom: 90px;" onclick="workInProgress('New Call')"><i class="fas fa-phone-plus"></i></div>
+        <div id="callHistoryList"></div>
     </div>
-
     <div class="fab" id="mainFab" onclick="openSelectContact()"><i class="fas fa-plus"></i></div>
 
     <div class="bottom-nav">
@@ -463,11 +454,11 @@
             <div class="avatar" id="chatAvatar">R</div>
             <div class="name" id="chatName">Rahul
             Sharma</div>
-            <div class="actions">
-    <i class="fas fa-video" onclick="startCall(document.getElementById('chatName').innerText, '#00a884')"></i>
-    <i class="fas fa-phone-alt" onclick="startCall(document.getElementById('chatName').innerText, '#00a884')"></i>
-    <i class="fas fa-ellipsis-v"></i>
-</div>
+                        <div class="actions">
+                <i class="fas fa-video" onclick="startVideoCall()" title="Video call"></i>
+                <i class="fas fa-phone-alt" onclick="startVoiceCall()" title="Voice call"></i>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
         </div>
                 <div class="messages-area" id="messagesArea"></div>
         <div class="reply-bar" id="replyBar">
@@ -608,7 +599,7 @@ function createNewGroup() {
         if (screenId === 'chatsScreen') { document.getElementById('navChats').classList.add('active', 'chats-active'); document.getElementById('mainFab').style.display = 'flex'; }
         else if (screenId === 'updatesScreen') { document.getElementById('navUpdates').classList.add('active'); document.getElementById('mainFab').style.display = 'none'; }
         else if (screenId === 'communitiesScreen') { document.getElementById('navComm').classList.add('active'); document.getElementById('mainFab').style.display = 'none'; }
-        else if (screenId === 'callsScreen') { document.getElementById('navCalls').classList.add('active'); document.getElementById('mainFab').style.display = 'none'; }
+                else if (screenId === 'callsScreen') { document.getElementById('navCalls').classList.add('active'); document.getElementById('mainFab').style.display = 'none'; loadCalls(); }
     }
 
     function toggleThreeDot() {
@@ -1323,6 +1314,147 @@ function closeStatusViewer() {
     document.getElementById('svContent').innerHTML = '';
     activeStatus = null;
 }
+// --- CALLS LOGIC ---
+let activeCallPeerId = null;
+let activeCallPeerName = null;
+let activeCallType = 'audio';
+
+async function openContactPicker(type = 'audio') {
+    try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        const others = users.filter(u => u._id !== getMyId());
+        if (others.length === 0) return alert('No other users yet.');
+        const names = others.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
+        const pick = prompt(`Pick a contact for ${type} call:\n\n${names}\n\nEnter number:`);
+        const idx = parseInt(pick) - 1;
+        if (isNaN(idx) || !others[idx]) return;
+        const chosen = others[idx];
+        activeCallPeerId = chosen._id;
+        activeCallPeerName = chosen.name;
+        activeCallType = type;
+        if (type === 'video') doStartVideo(chosen.name, chosen._id);
+        else doStartVoice(chosen.name, chosen._id);
+    } catch (e) {
+        alert('Failed to load contacts');
+    }
+}
+
+function startVoiceCall() {
+    if (!activeChatUserId) return alert('Open a chat first');
+    activeCallType = 'audio';
+    activeCallPeerId = activeChatUserId;
+    activeCallPeerName = activeChatName;
+    doStartVoice(activeChatName, activeChatUserId);
+}
+
+function startVideoCall() {
+    if (!activeChatUserId) return alert('Open a chat first');
+    activeCallType = 'video';
+    activeCallPeerId = activeChatUserId;
+    activeCallPeerName = activeChatName;
+    doStartVideo(activeChatName, activeChatUserId);
+}
+
+// Log the call to server
+async function logCall(direction) {
+    if (!activeCallPeerId || !activeCallPeerName) return;
+    try {
+        await fetch('/api/calls', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                callerId: direction === 'outgoing' ? getMyId() : activeCallPeerId,
+                callerName: direction === 'outgoing' ? getMyName() : activeCallPeerName,
+                receiverId: direction === 'outgoing' ? activeCallPeerId : getMyId(),
+                receiverName: direction === 'outgoing' ? activeCallPeerName : getMyName(),
+                type: activeCallType,
+                direction
+            })
+        });
+    } catch (e) { console.warn('logCall failed', e); }
+}
+
+// Voice call (audio only)
+async function doStartVoice(name, peerId) {
+    playClickSound();
+    currentRoomId = 'call_' + [getMyId(), peerId].sort().join('_');
+    document.getElementById('callName').innerText = name;
+    const av = document.getElementById('callAvatar');
+    av.innerText = name.charAt(0).toUpperCase();
+    av.style.background = '#00a884';
+    document.getElementById('callStatus').innerText = 'Calling...';
+    document.getElementById('callScreen').style.display = 'flex';
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (e) { alert('Mic permission denied'); endCall(); return; }
+    document.getElementById('localVideo').srcObject = localStream;
+    socket.emit('joinRoom', currentRoomId);
+    logCall('outgoing');
+}
+
+// Video call
+async function doStartVideo(name, peerId) {
+    playClickSound();
+    currentRoomId = 'call_' + [getMyId(), peerId].sort().join('_');
+    document.getElementById('callName').innerText = name;
+    const av = document.getElementById('callAvatar');
+    av.innerText = name.charAt(0).toUpperCase();
+    av.style.background = '#00a884';
+    document.getElementById('callStatus').innerText = 'Calling...';
+    document.getElementById('callScreen').style.display = 'flex';
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    } catch (e) { alert('Camera/Mic permission denied'); endCall(); return; }
+    document.getElementById('localVideo').srcObject = localStream;
+    socket.emit('joinRoom', currentRoomId);
+    logCall('outgoing');
+}
+
+// Load call history
+async function loadCalls() {
+    const list = document.getElementById('callHistoryList');
+    if (!list) return;
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#8696a0;">Loading…</div>';
+    try {
+        const res = await fetch('/api/calls/' + getMyId());
+        const calls = await res.json();
+        list.innerHTML = '';
+        if (calls.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:#8696a0;">No recent calls</div>';
+            return;
+        }
+        calls.forEach(c => {
+            const isOutgoing = c.callerId === getMyId();
+            const otherName = isOutgoing ? c.receiverName : c.callerName;
+            const otherId = isOutgoing ? c.receiverId : c.callerId;
+            const icon = c.type === 'video' ? 'fa-video' : 'fa-phone';
+            const arrow = isOutgoing ? 'fa-arrow-up' : 'fa-arrow-down';
+            const color = isOutgoing ? '#00a884' : '#e74c3c';
+            const time = new Date(c.createdAt).toLocaleString();
+            const el = document.createElement('div');
+            el.className = 'call-item';
+            el.innerHTML = `
+                <div class="avatar" style="background:#00a884;">${otherName.charAt(0).toUpperCase()}</div>
+                <div class="call-details">
+                    <div class="call-name">${otherName}</div>
+                    <div class="call-status" style="color:${color};">
+                        <i class="fas ${arrow}"></i>
+                        <i class="fas ${icon}"></i>
+                        ${isOutgoing ? 'Outgoing' : (c.direction === 'missed' ? 'Missed' : 'Incoming')} — ${time}
+                    </div>
+                </div>
+                <div class="call-icon">
+                    <i class="fas fa-phone-alt" style="cursor:pointer;margin-right:10px;" onclick="event.stopPropagation();openContactPicker('audio')" title="Voice call"></i>
+                    <i class="fas fa-video" style="cursor:pointer;color:#00a884;" onclick="event.stopPropagation();openContactPicker('video')" title="Video call"></i>
+                </div>`;
+            el.onclick = () => openContactPicker('audio');
+            list.appendChild(el);
+        });
+    } catch (e) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:#e74c3c;">Failed to load calls</div>';
+    }
+}
 // --- SIGNALING SERVER CONNECTION ---
 socket.on('connect', () => {
     console.log('✅ Connected to signaling server. My socket ID:', socket.id);
@@ -1348,6 +1480,9 @@ socket.on('userJoined', async () => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     socket.emit('offer', { roomId: currentRoomId, offer });
+});
+socket.on('newCallLogged', () => {
+    if (document.getElementById('callsScreen').classList.contains('active')) loadCalls();
 });
 
 socket.on('newStatus', () => loadStatuses());

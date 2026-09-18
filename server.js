@@ -45,6 +45,17 @@ const messageSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', messageSchema);
+// Call schema — call history
+const callSchema = new mongoose.Schema({
+    callerId:     { type: String, required: true },
+    callerName:   { type: String, required: true },
+    receiverId:   { type: String, required: true },
+    receiverName: { type: String, required: true },
+    type:         { type: String, enum: ['audio', 'video'], required: true },
+    direction:    { type: String, enum: ['outgoing', 'incoming', 'missed'], required: true },
+    createdAt:    { type: Date, default: Date.now }
+});
+const Call = mongoose.model('Call', callSchema);
 // User schema
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
@@ -192,6 +203,29 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const list = await User.find({}, { password: 0 }).sort({ name: 1 });
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// ---------- CALL ROUTES ----------
+app.post('/api/calls', async (req, res) => {
+    try {
+        const { callerId, callerName, receiverId, receiverName, type, direction } = req.body;
+        const call = await Call.create({ callerId, callerName, receiverId, receiverName, type, direction });
+        io.emit('newCallLogged', { receiverId, callerId });
+        res.json(call);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/calls/:userId', async (req, res) => {
+    try {
+        const uid = req.params.userId;
+        const list = await Call.find({
+            $or: [{ callerId: uid }, { receiverId: uid }]
+        }).sort({ createdAt: -1 }).limit(100);
         res.json(list);
     } catch (err) {
         res.status(500).json({ error: err.message });
