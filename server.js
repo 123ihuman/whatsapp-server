@@ -42,13 +42,33 @@ const messageSchema = new mongoose.Schema({
     text:      { type: String, default: '' },
     mediaUrl:  { type: String, default: null },
     mediaType: { type: String, default: null },
-    replyTo:   { type: mongoose.Schema.Types.Mixed, default: null },
+        replyTo: { type: mongoose.Schema.Types.Mixed, default: null },
+    reactions: { type: mongoose.Schema.Types.Mixed, default: {} },
+    edited: { type: Boolean, default: false },
+    forwarded: { type: Boolean, default: false },
     read:      { type: Boolean, default: false },
     deleted:   { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date, default: null, index: { expires: 0 } }
 });
 const Message = mongoose.model('Message', messageSchema);
 // Call schema — call history
+const userPrefsSchema = new mongoose.Schema({
+    userId:  { type: String, required: true, unique: true },
+    pinned:  { type: [String], default: [] },
+    archived:{ type: [String], default: [] },
+    starred: { type: [String], default: [] },
+    blocked: { type: [String], default: [] }
+});
+const UserPrefs = mongoose.model('UserPrefs', userPrefsSchema);
+const groupSchema = new mongoose.Schema({
+    groupId:   { type: String, required: true, unique: true },
+    name:      { type: String, required: true },
+    members:   { type: [String], default: [] },
+    createdBy: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+const Group = mongoose.model('Group', groupSchema);
 const callSchema = new mongoose.Schema({
     callerId:     { type: String, required: true },
     callerName:   { type: String, required: true },
@@ -155,6 +175,48 @@ app.post('/api/messages/read', async (req, res) => {
 
 app.post('/api/messages/clear', async (req, res) => { try { await Message.deleteMany({ roomId: req.body.roomId }); io.to(req.body.roomId).emit('chatCleared', { roomId: req.body.roomId }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/messages/deleteRoom', async (req, res) => { try { await Message.deleteMany({ roomId: req.body.roomId }); io.to(req.body.roomId).emit('chatCleared', { roomId: req.body.roomId }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/messages/setDisappearing', async (req, res) => {
+  try {
+    const { roomId, seconds } = req.body;
+    const cutoff = seconds > 0 ? new Date(Date.now() + seconds * 1000) : null;
+    await Message.updateMany({ roomId, expiresAt: null }, { $set: { expiresAt: cutoff } });
+    io.to(roomId).emit('disappearingUpdated', { roomId, seconds });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/messages/react', async (req, res) => {
+  try {
+    const { msgId, userId, emoji } = req.body;
+    const msg = await Message.findById(msgId);
+    if (!msg) return res.status(404).json({ error: 'Not found' });
+    const r = { ...(msg.reactions || {}) };
+    if (r[userId] === emoji) delete r[userId]; else r[userId] = emoji;
+    msg.reactions = r; await msg.save();
+    io.to(msg.roomId).emit('messageReacted', { msgId: msg._id, roomId: msg.roomId, reactions: r });
+    res.json({ ok: true, reactions: r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/messages/edit', async (req, res) => {
+  try {
+    const { msgId, userId, text } = req.body;
+    const msg = await Message.findById(msgId);
+    if (!msg) return res.status(404).json({ error: 'Not found' });
+    if (msg.sender !== userId) return res.status(403).json({ error: 'Not yours' });
+    msg.text = text; msg.edited = true; await msg.save();
+    io.to(msg.roomId).emit('messageEdited', { msgId: msg._id, roomId: msg.roomId, text });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/messages/forward', async (req, res) => {
+  try {
+    const { msgId, targetRoomId, userId, senderName } = req.body;
+    const src = await Message.findById(msgId);
+    if (!src) return res.status(404).json({ error: 'Not found' });
+    const m = await Message.create({ roomId: targetRoomId, sender: userId, senderName, text: src.text, mediaUrl: src.mediaUrl, mediaType: src.mediaType, forwarded: true });
+    io.to(targetRoomId).emit('newMessage', m);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/messages/delete', async (req, res) => {
     try {
         const { msgId, userId } = req.body;
@@ -184,6 +246,16 @@ app.get('/api/unread/:userId', async (req, res) => {
     const rooms = {}; let total = 0;
     for (const m of msgs) { if (m._id.includes(uid)) { rooms[m._id] = m.count; total += m.count; } }
     res.json({ rooms, total });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/prefs/:userId', async (req, res) => {
+  try { let p = await UserPrefs.findOne({ userId: req.params.userId }); if (!p) p = await UserPrefs.create({ userId: req.params.userId }); res.json(p); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/prefs/:userId', async (req, res) => {
+  try { const { field, value } = req.body; const upd = {}; upd[field] = value;
+    await UserPrefs.findOneAndUpdate({ userId: req.params.userId }, { $set: upd }, { upsert: true });
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ---------- AUTH ROUTES ----------
@@ -239,6 +311,10 @@ app.post('/api/login', async (req, res) => {
 });
 
 // List all users (for contacts) — excludes passwords
+app.get('/api/blocked/:userId', async (req, res) => {
+  try { const p = await UserPrefs.findOne({ userId: req.params.userId }); res.json(p ? p.blocked : []); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/users', async (req, res) => {
     try {
         const list = await User.find({}, { password: 0 }).sort({ name: 1 });
@@ -283,6 +359,38 @@ app.get('/api/calls/:userId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+app.post('/api/groups', async (req, res) => {
+  try {
+    const { name, members, createdBy } = req.body;
+    const gid = 'group_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    const g = await Group.create({ groupId: gid, name, members: [createdBy, ...members], createdBy });
+    res.json(g);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/groups/:userId', async (req, res) => {
+  try { const list = await Group.find({ members: req.params.userId }); res.json(list); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/groups/info/:groupId', async (req, res) => {
+  try { const g = await Group.findOne({ groupId: req.params.groupId }); res.json(g || {}); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/groups/addMember', async (req, res) => {
+  try {
+    const { groupId, userId } = req.body;
+    await Group.updateOne({ groupId }, { $addToSet: { members: userId } });
+    io.to(groupId).emit('groupUpdated', { groupId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/groups/removeMember', async (req, res) => {
+  try {
+    const { groupId, userId } = req.body;
+    await Group.updateOne({ groupId }, { $pull: { members: userId } });
+    io.to(groupId).emit('groupUpdated', { groupId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // ---------- SOCKET.IO ----------
 const onlineUsers = new Map(); // socketId -> userId
 
@@ -320,7 +428,7 @@ io.on('connection', (socket) => {
                 text:      data.text || '',
                 mediaUrl:  data.mediaUrl || null,
                 mediaType: data.mediaType || null,
-                replyTo:   data.replyTo || null
+                replyTo: data.replyTo || null, expiresAt: data.expiresAt || null
             });
             io.to(data.roomId).emit('newMessage', msg);
         } catch (err) {

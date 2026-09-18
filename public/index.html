@@ -198,12 +198,19 @@
 .new-group-screen.active,.contact-info-screen.active{display:block;}
 .contact-list-item.selected{background:#e7fce3;}
 .contact-list-item.selected::after{content:"✓";margin-left:auto;color:#00a884;font-weight:bold;}
+.group-info-screen,.disappearing-picker,.broadcast-picker { position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2600;display:none;overflow-y:auto;padding-bottom:40px; }
+.group-info-screen.active,.disappearing-picker.active,.broadcast-picker.active { display:block; }
+.dm-timer { display:inline-block;padding:4px 10px;background:#e7fce3;color:#008069;border-radius:12px;font-size:12px;margin-left:10px; }
 .three-dot-menu { display: none; position: absolute; top: 50px; right: 10px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border-radius: 5px; width: 250px; z-index: 1500; }
         .menu-item { padding: 15px 20px; font-size: 15px; color: #111b21; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
         .menu-item:hover { background: #f5f6f6; }
         .menu-item i { margin-right: 15px; color: #54656f; }
         
-        .pinned-chats { background: #fff; border-bottom: 1px solid #f0f2f5; }
+        .archive-toggle { display:flex;align-items:center;gap:15px;padding:14px 20px;border-top:1px solid #e0e0e0;cursor:pointer;background:#fff; }
+.archive-toggle i { color:#54656f;font-size:20px; }
+.archive-toggle span { font-size:15px;color:#54656f; }
+.archived-item { opacity:0.85; }
+.pinned-chats { background: #fff; border-bottom: 1px solid #f0f2f5; }
         .pin-header { padding: 10px 15px; font-size: 14px; font-weight: 500; color: #008069; display: flex; justify-content: space-between; align-items: center; }
     /* --- CALL SCREEN --- */
 .call-screen {
@@ -334,6 +341,15 @@
 .reply-bar .rq-text { color: #667781; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reply-bar .rq-close { cursor: pointer; color: #54656f; font-size: 18px; padding: 5px; }
 .msg.deleted .msg-text { font-style: italic; color: #8696a0; opacity: 0.8; }
+.reaction-picker { position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:#fff;border-radius:40px;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:none;padding:8px 12px;gap:8px;z-index:5000; }
+.reaction-picker.active { display:flex; }
+.reaction-opt { width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;transition:transform .15s; }
+.reaction-opt:hover { transform:scale(1.25);background:#f0f2f5; }
+.msg-reactions { position:absolute;bottom:-14px;right:8px;background:#fff;border-radius:12px;padding:2px 8px;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,0.2);display:flex;gap:3px; }
+.msg-reactions span { cursor:pointer; }
+.msg-edited { font-size:10px;color:#8696a0;margin-left:5px; }
+.msg-forwarded { font-size:11px;color:#8696a0;font-style:italic;margin-bottom:3px; }
+.msg-copy-hint { font-size:11px;color:#8696a0;margin-left:5px; }
 .msg.deleted .msg-text::before { content: "🚫 "; }
 /* --- AVATAR with image support --- */
 .avatar img {
@@ -665,16 +681,20 @@
 <div class="app-container">
        <div class="chat-menu" id="chatMenu">
 <div class="menu-item" onclick="closeChatMenu();openContactInfo()">Contact info</div>
+<div class="menu-item" onclick="closeChatMenu();openGroupInfo()" id="groupInfoMenuItem" style="display:none;">Group info</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Search in chat')">Search</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Select messages')">Select messages</div>
+<div class="menu-item" onclick="closeChatMenu();editLastMessage()">Edit last message</div>
 <div class="menu-item" onclick="closeChatMenu();toggleMuteChat()" id="muteMenuItem">Mute notifications</div>
-<div class="menu-item" onclick="closeChatMenu();workInProgress('Disappearing messages')">Disappearing messages</div>
-<div class="menu-item" onclick="closeChatMenu();workInProgress('Add to Favorites')">Add to Favorites</div>
+<div class="menu-item" onclick="closeChatMenu();openDisappearingPicker()">Disappearing messages</div>
+<div class="menu-item" onclick="closeChatMenu();toggleStar()" id="starMenuItem">Star messages</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Add to list')">Add to list</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Export chat')">Export chat</div>
 <div class="menu-item" onclick="closeChatMenu();closeChatWindow()">Close chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Send call link')">Send call link</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('New group call')">New group call</div>
+<div class="menu-item" onclick="closeChatMenu();togglePin()" id="pinMenuItem">Pin chat</div>
+<div class="menu-item" onclick="closeChatMenu();toggleArchive()" id="archiveMenuItem">Archive chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Report')">Report</div>
 <div class="menu-item" onclick="closeChatMenu();blockContact()">Block</div>
 <div class="menu-item" onclick="closeChatMenu();clearChat()">Clear chat</div>
@@ -687,7 +707,6 @@
 <div id="groupContactList"></div>
 <button class="settings-cta" onclick="createGroupFromScreen()">Create group</button>
 </div>
-
 <div class="contact-info-screen" id="contactInfoScreen">
 <div class="select-header"><i class="fas fa-arrow-left" onclick="closeContactInfo()"></i><div>Contact info</div></div>
 <div style="text-align:center;padding:25px;">
@@ -708,10 +727,37 @@
 <div class="settings-row" onclick="deleteChat()"><div class="settings-icon" style="color:#e74c3c;"><i class="fas fa-trash"></i></div><div class="settings-row-text" style="color:#e74c3c;">Delete chat</div></div>
 </div>
 </div>
+<div class="group-info-screen" id="groupInfoScreen">
+<div class="select-header"><i class="fas fa-arrow-left" onclick="closeGroupInfo()"></i><div>Group info</div></div>
+<div style="text-align:center;padding:25px;">
+<div class="avatar" id="giAvatar" style="width:130px;height:130px;margin:0 auto 15px;font-size:50px;background:#00a884;">G</div>
+<div id="giName" style="font-size:24px;font-weight:500;color:#111b21;"></div>
+<div id="giCount" style="color:#667781;font-size:14px;margin-top:6px;"></div>
+</div>
+<div class="settings-section-title">Members</div>
+<div id="giMembersList"></div>
+<button class="settings-cta" onclick="openAddMemberPicker()">Add member</button>
+</div>
+
+<div class="disappearing-picker" id="disappearingPicker">
+<div class="settings-topbar"><i class="fas fa-arrow-left" onclick="closeDisappearingPicker()"></i><div class="settings-title">Disappearing messages</div></div>
+<div class="settings-list" onclick="setDisappearing(0)"><div class="settings-row-text">Off</div></div>
+<div class="settings-list" onclick="setDisappearing(86400)"><div class="settings-row-text">24 hours</div></div>
+<div class="settings-list" onclick="setDisappearing(604800)"><div class="settings-row-text">7 days</div></div>
+<div class="settings-list" onclick="setDisappearing(7776000)"><div class="settings-row-text">90 days</div></div>
+</div>
+
+<div class="broadcast-picker" id="broadcastPicker">
+<div class="settings-topbar"><i class="fas fa-arrow-left" onclick="closeBroadcastPicker()"></i><div class="settings-title">Broadcast list</div></div>
+<div style="padding:20px;"><input type="text" id="broadcastName" placeholder="List name" style="width:100%;padding:14px;border:1px solid #ddd;border-radius:8px;font-size:16px;"></div>
+<div class="contact-header">Select recipients</div>
+<div id="broadcastContactList"></div>
+<button class="settings-cta" onclick="createBroadcast()">Create</button>
+</div>
 <div class="three-dot-menu" id="threeDotMenu">
         <div class="menu-item" onclick="closeDrawer();createNewGroup()">New group</div>
         <div class="menu-item" onclick="closeDrawer();workInProgress('New community')">New community</div>
-        <div class="menu-item" onclick="closeDrawer();workInProgress('Broadcast lists')">Broadcast lists</div>
+        <div class="menu-item" onclick="closeDrawer();openBroadcastPicker()">Broadcast lists</div>
         <div class="menu-item" onclick="closeDrawer();openSettings('linkedDevices')">Linked devices</div>
         <div class="menu-item" onclick="closeDrawer();workInProgress('Starred messages')">Starred</div>
         <div class="menu-item" onclick="closeDrawer();openUPI()">Payments</div>
@@ -745,10 +791,8 @@
         </div>
 
         <div class="pinned-chats"><div class="pin-header"><span>Pinned</span><i class="fas fa-chevron-down"></i></div></div>
-
                 <div id="chatList"></div>
     </div>
-
     <div class="screen" id="updatesScreen">
         <div class="status-header">Updates <i class="fas fa-search"></i> <i class="fas fa-ellipsis-v"></i></div>
         <div class="status-section-title">Status</div>
@@ -758,15 +802,12 @@
             <div><div class="name" style="font-size: 16px; font-weight: 500; color: #111b21;">Add status</div><div class="time" style="font-size: 13px; color: #667781;">Disappears after 24 hours</div></div>
         </div>
         <div class="status-section-title" style="margin-top: 15px;">Recent updates</div>
-        
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/e74c3c/FFFFFF?text=RS"></div><div><div class="name">Rahul Sharma</div><div class="time">1:28 PM</div></div></div>
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/27ae60/FFFFFF?text=PP"></div><div><div class="name">Priya Patel</div><div class="time">9:13 AM</div></div></div>
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/8e44ad/FFFFFF?text=AS"></div><div><div class="name">Amit Singh</div><div class="time">11:52 AM</div></div></div>
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/3498db/FFFFFF?text=SG"></div><div><div class="name">Sneha Gupta</div><div class="time">Yesterday</div></div></div>
-        
         <div class="fab" style="background: #00a884; bottom: 90px;" onclick="workInProgress('New Status')"><i class="fas fa-pen"></i></div>
     </div>
-
     <div class="screen" id="communitiesScreen">
         <div class="community-header">Communities <i class="fas fa-ellipsis-v"></i></div>
         <div class="community-box">
@@ -776,7 +817,6 @@
             <button class="btn-green" onclick="workInProgress('Start Community')">Start your community</button>
         </div>
     </div>
-
         <div class="screen" id="callsScreen">
         <div class="calls-header">Calls <i class="fas fa-search"></i> <i class="fas fa-ellipsis-v"></i></div>
         <div class="quick-actions">
@@ -789,7 +829,6 @@
         <div id="callHistoryList"></div>
     </div>
     <div class="fab" id="mainFab" onclick="openNewGroupScreen()"><i class="fas fa-plus"></i></div>
-
     <div class="bottom-nav">
         <div class="nav-item active chats-active" onclick="switchTab('chatsScreen')" id="navChats"><i class="fas fa-comments"></i><span>Chats</span><div class="badge" id="totalUnreadBadge" style="display:none;"></div>
 
@@ -798,7 +837,6 @@
         <div class="nav-item" onclick="switchTab('communitiesScreen')" id="navComm"><i class="fas fa-users"></i><span>Communities</span></div>
         <div class="nav-item" onclick="switchTab('callsScreen')" id="navCalls"><i class="fas fa-phone-alt"></i><span>Calls</span></div>
     </div>
-
     <div class="select-contact-screen" id="selectContactScreen">
         <div class="select-header">
             <i class="fas fa-arrow-left" onclick="closeSelectContact()"></i>
@@ -814,7 +852,6 @@
                 <div class="contact-header">Contacts on WhatsApp</div>
 <div id="selectContactList"></div>
 </div>
-
 <div class="chat-window" id="chatWindow">
         <div class="chat-window-header" onclick="if(event.target.id==='chatName'||event.target.id==='chatAvatar')openContactInfo()">
             <i class="fas fa-arrow-left" onclick="closeChatWindow()"></i>
@@ -827,7 +864,7 @@
                 <i class="fas fa-ellipsis-v" onclick="toggleChatMenu(event)"></i>
             </div>
         </div>
-                <div class="messages-area" id="messagesArea"></div>
+             <div class="messages-area" id="messagesArea"></div>
         <div class="reply-bar" id="replyBar">
             <div class="rq-content">
                 <div class="rq-name" id="replyBarName"></div>
@@ -850,7 +887,6 @@
     </div>
     <!-- ================= SETTINGS SCREEN ================= -->
     <div class="settings-screen" id="settingsScreen">
-
         <!-- HOME -->
         <div class="settings-page active" id="set_home">
             <div class="settings-topbar">
@@ -861,7 +897,6 @@
                     <i class="fas fa-pen" onclick="workInProgress('Edit profile')"></i>
                 </div>
             </div>
-
             <div class="settings-profile">
                 <div class="settings-avatar" id="settingsAvatar" onclick="triggerAvatarUpload()">
                     <img src="" id="settingsAvatarImg" style="display:none;">
@@ -871,7 +906,6 @@
                     <span id="settingsName">User</span> <i class="fas fa-chevron-down" style="font-size:14px;color:#667781;"></i>
                 </div>
             </div>
-
             <div class="settings-list">
                 <div class="settings-row" onclick="openUPI()">
                     <div class="settings-icon"><i class="fas fa-rupee-sign"></i></div>
@@ -937,7 +971,6 @@
                     <div class="settings-row-text">App language<br><span class="settings-sub">English (device's language)</span></div>
                 </div>
             </div>
-
             <div class="settings-list">
                 <div class="settings-row" onclick="workInProgress('Help and feedback')">
                     <div class="settings-icon"><i class="fas fa-question-circle"></i></div>
@@ -949,7 +982,6 @@
                 </div>
             </div>
         </div>
-
         <!-- ACCOUNT -->
         <div class="settings-page" id="set_account">
             <div class="settings-topbar">
@@ -1008,7 +1040,6 @@
                 </div>
             </div>
         </div>
-
         <!-- PRIVACY -->
         <div class="settings-page" id="set_privacy">
             <div class="settings-topbar">
@@ -1052,7 +1083,6 @@
                 <div class="settings-row" onclick="workInProgress('Privacy checkup')"><div class="settings-row-text">Privacy checkup<br><span class="settings-sub">Control your privacy and choose the right settings for you.</span></div></div>
             </div>
         </div>
-
         <!-- CHATS -->
         <div class="settings-page" id="set_chats">
             <div class="settings-topbar">
@@ -1082,7 +1112,7 @@
             <div class="settings-list">
                 <div class="settings-row" onclick="workInProgress('Chat backup')"><div class="settings-icon"><i class="fas fa-cloud-upload-alt"></i></div><div class="settings-row-text">Chat backup</div></div>
                 <div class="settings-row" onclick="workInProgress('Transfer chats')"><div class="settings-icon"><i class="fas fa-exchange-alt"></i></div><div class="settings-row-text">Transfer chats</div></div>
-                <div class="settings-row" onclick="workInProgress('Chat history')"><div class="settings-icon"><i class="fas fa-history"></i></div><div class="settings-row-text">Chat history</div></div>
+                                <div class="settings-row" onclick="workInProgress('Chat history')"><div class="settings-icon"><i class="fas fa-history"></i></div><div class="settings-row-text">Chat history</div></div>
                 <div class="settings-row" onclick="workInProgress('Private Processing')"><div class="settings-icon"><i class="fas fa-lock"></i></div><div class="settings-row-text">Private Processing</div></div>
             </div>
         </div>
@@ -1139,7 +1169,6 @@
                 <div class="settings-row"><div class="settings-row-text">App icon badge<br><span class="settings-sub">Clears when you open WhatsApp</span></div></div>
             </div>
         </div>
-
         <!-- APPEARANCE -->
         <div class="settings-page" id="set_appearance">
             <div class="settings-topbar">
@@ -1169,7 +1198,7 @@
             </div>
                     <div class="settings-list" style="border-top:none;">
                 <div class="settings-row" onclick="workInProgress('WhatsApp Plus')" style="justify-content:center;text-align:center;">
-                    <div class="settings-row-text" style="color:#667781;font-size:14px;">Subscribe to WhatsApp Plus to change your app icon, theme and more. <span style="color:#00a884;">Explore benefits</span></div>
+                                        <div class="settings-row-text" style="color:#667781;font-size:14px;">Subscribe to WhatsApp Plus to change your app icon, theme and more. <span style="color:#00a884;">Explore benefits</span></div>
                 </div>
             </div>
         </div>
@@ -1178,17 +1207,20 @@
         <div class="settings-page" id="set_appIcon">
             <div class="settings-topbar"><i class="fas fa-arrow-left" onclick="openSettings('appearance')"></i><div class="settings-title">App icon</div></div>
             <div class="icon-grid" id="iconGrid"></div>
+
+<div style="text-align:center;padding:10px 20px 0;font-size:13px;color:#667781;">Tap an icon to apply</div>
             <div class="settings-list" style="border-top:none;">
                 <div class="settings-row" onclick="workInProgress('WhatsApp Plus')" style="justify-content:center;text-align:center;">
                     <div class="settings-row-text" style="color:#667781;font-size:14px;">Change your app icon with WhatsApp Plus. <span style="color:#00a884;font-weight:600;">Get WhatsApp Plus</span></div>
                 </div>
             </div>
         </div>
-
         <!-- APP THEME -->
         <div class="settings-page" id="set_appTheme">
             <div class="settings-topbar"><i class="fas fa-arrow-left" onclick="openSettings('appearance')"></i><div class="settings-title">App theme</div></div>
-            <div class="theme-grid" id="themeGrid"></div>
+            <div class="settings-list" style="border-top:1px solid #f0f2f5;margin-bottom:0;">
+
+<div class="settings-row" style="cursor:default;"> <div class="settings-icon"><i class="fas fa-adjust"></i></div> <div class="settings-row-text">Dark mode<br><span class="settings-sub" id="darkModeSub">System default</span></div> <div class="toggle off" id="darkModeToggle" onclick="toggleDarkMode()"><i class="fas fa-minus"></i></div> </div> </div> <div class="settings-section-title" style="color:#54656f;">Color</div> <div class="theme-grid" id="themeGrid"></div>
         </div>
 
         <!-- FONT SIZE -->
@@ -1199,17 +1231,26 @@
                 <input type="range" id="fontSlider" min="13" max="22" step="1" value="17" style="width:100%;" oninput="updateFontPreview(this.value)">
                 <div style="display:flex;justify-content:space-between;margin-top:15px;color:#667781;font-size:13px;"><span>Small</span><span>Medium</span><span>Large</span></div>
             </div>
-                        <button class="settings-cta" onclick="saveFontSize()">Save</button>
+            <button class="settings-cta" onclick="saveFontSize()">Save</button>
         </div>
 
-        <!-- LINKED DEVICES -->
+        <!-- LINKED DEVICES -->>
         <div class="settings-page" id="set_linkedDevices">
             <div class="settings-topbar">
                 <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
                 <div class="settings-title">Linked devices</div>
             </div>
             <div style="text-align:center;padding:40px 20px;">
-                <i class="fas fa-desktop" style="font-size:80px;color:#00a884;margin-bottom:20px;"></i>
+                <svg viewBox="0 0 400 240" style="width:100%;max-width:320px;margin-bottom:20px;">
+<rect x="40" y="30" width="110" height="200" rx="16" fill="#e7fce3" stroke="#111b21" stroke-width="3"/>
+<circle cx="95" cy="215" r="6" fill="none" stroke="#111b21" stroke-width="2"/>
+<rect x="60" y="70" width="60" height="30" rx="6" fill="#fff" stroke="#111b21" stroke-width="2"/>
+<path d="M160 90 q20 -20 40 0 q20 20 40 0 q20 -20 40 0" fill="none" stroke="#00a884" stroke-width="3"/>
+<circle cx="230" cy="90" r="18" fill="#e7fce3" stroke="#00a884" stroke-width="2"/>
+<path d="M225 90 l4 4 l8 -8" stroke="#00a884" stroke-width="2.5" fill="none"/>
+<path d="M300 60 l90 30 l-30 40 l-60 -40 z" fill="#25d366" stroke="#111b21" stroke-width="3"/>
+<path d="M270 130 l110 20 l-30 50 l-80 -30 z" fill="#00c853" stroke="#111b21" stroke-width="3"/>
+</svg>
                 <div style="font-size:20px;color:#111b21;margin-bottom:15px;">Use WhatsApp on other devices</div>
                 <div style="color:#667781;font-size:14px;line-height:1.6;">You can link other devices to this account, including Windows, Mac and Web. <span style="color:#00a884;">Learn more</span></div>
             </div>
@@ -1253,6 +1294,14 @@
 
     <!-- Floating emoji animation layer -->
     <div class="emoji-burst-layer" id="emojiBurstLayer"></div>
+<div class="reaction-picker" id="reactionPicker">
+<div class="reaction-opt" onclick="sendReaction('❤️')">❤️</div>
+<div class="reaction-opt" onclick="sendReaction('😂')">😂</div>
+<div class="reaction-opt" onclick="sendReaction('😮')">😮</div>
+<div class="reaction-opt" onclick="sendReaction('😢')">😢</div>
+<div class="reaction-opt" onclick="sendReaction('👍')">👍</div>
+<div class="reaction-opt" onclick="sendReaction('🙏')">🙏</div>
+</div>
 
     <!-- Reaction bar -->
     <div class="reaction-bar">
@@ -1503,6 +1552,7 @@ async function openChatWindow(name, userId) {
     document.getElementById('selectContactScreen').style.display = 'none';
     document.getElementById('mainFab').style.display = 'none';
     if (unreadData.rooms[activeRoomId]) { unreadData.rooms[activeRoomId] = 0; unreadData.total = Math.max(0, unreadData.total - 1); refreshUnread(); }
+document.getElementById('groupInfoMenuItem').style.display = userId && String(userId).startsWith('group_') ? 'block' : 'none';
 }
 
 function renderMessage(m) {
@@ -1540,25 +1590,28 @@ function renderMessage(m) {
     const div = document.createElement('div');
     div.className = 'msg ' + (isMine ? 'msg-out' : 'msg-in') + (m.deleted ? ' deleted' : '');
     div.dataset.msgId = m._id;
-    div.innerHTML = `${replyHtml}${bodyHtml}<span class="msg-time">${time} ${tick}</span>`;
+    const fwd = m.forwarded ? '<div class="msg-forwarded">↱ Forwarded</div>' : '';
+const edt = m.edited ? ' <span class="msg-edited">(edited)</span>' : '';
+div.innerHTML = fwd + replyHtml + bodyHtml + '<span class="msg-time">' + time + edt + ' ' + tick + '</span>';
+renderReactions(div, m.reactions);
 
     // Right-click (desktop) or long-press (mobile) for actions
-    div.addEventListener('contextmenu', (e) => {
+        div.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (m.deleted) return;
-        const action = prompt('Type "reply" or "delete":', 'reply');
-        if (action === 'reply') {
-            replyToMessage(m._id, isMine ? 'You' : m.senderName, m.text || (m.mediaType || 'media'));
-        } else if (action === 'delete') {
-            if (!isMine) return alert('You can only delete your own messages.');
-            deleteMessage(m._id);
-        }
+        const action = prompt('Type "reply", "react", "delete", "copy" or "forward":', 'reply');
+        if (action === 'reply') replyToMessage(m._id, isMine ? 'You' : m.senderName, m.text || (m.mediaType || 'media'));
+        else if (action === 'react') openReactionPicker(m._id);
+        else if (action === 'delete') { if (!isMine) return alert('You can only delete your own messages.'); deleteMessage(m._id); }
+        else if (action === 'copy') { navigator.clipboard.writeText(m.text || ''); alert('Copied'); }
+        else if (action === 'forward') forwardMessage(m);
     });
 
     // Save message data on the element for later
     div._messageData = m;
 
     area.appendChild(div);
+setTimeout(() => renderReactions(div, m.reactions), 20);
     area.scrollTop = area.scrollHeight;
 }
 
@@ -1574,6 +1627,41 @@ function renderMessage(m) {
     }
 // --- REPLY TO MESSAGE ---
 let replyingTo = null;
+let reactingToMsgId = null;
+function openReactionPicker(msgId) {
+  reactingToMsgId = msgId;
+  document.getElementById('reactionPicker').classList.add('active');
+}
+function closeReactionPicker() { document.getElementById('reactionPicker').classList.remove('active'); reactingToMsgId = null; }
+async function sendReaction(emoji) {
+  if (!reactingToMsgId) return;
+  await fetch('/api/messages/react', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgId: reactingToMsgId, userId: getMyId(), emoji }) });
+  closeReactionPicker();
+}
+function renderReactions(el, reactions) {
+  el.querySelector('.msg-reactions')?.remove();
+  const vals = Object.values(reactions || {});
+  if (vals.length === 0) return;
+  const counts = {}; vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
+  const html = Object.entries(counts).map(([e, c]) => '<span>' + e + (c > 1 ? c : '') + '</span>').join('');
+  const d = document.createElement('div'); d.className = 'msg-reactions'; d.innerHTML = html;
+  el.appendChild(d);
+}
+function editLastMessage() {
+  if (!activeRoomId) return;
+  const mine = [...document.querySelectorAll('#messagesArea .msg-out')].pop();
+  if (!mine || !mine._messageData) return alert('No editable message');
+  const m = mine._messageData;
+  if (m.deleted || m.mediaType) return alert('Cannot edit this message');
+  const newText = prompt('Edit message:', m.text);
+  if (!newText || newText === m.text) return;
+  fetch('/api/messages/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgId: m._id, userId: getMyId(), text: newText }) });
+}
+function forwardMessage(m) {
+  const roomId = prompt('Forward to which chat? Paste their user ID:');
+  if (!roomId) return;
+  fetch('/api/messages/forward', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgId: m._id, targetRoomId: roomId, userId: getMyId(), senderName: getMyName() }) }).then(() => alert('Forwarded'));
+}
 
 function replyToMessage(msgId, senderName, previewText) {
     replyingTo = { msgId, senderName, text: previewText };
@@ -1615,8 +1703,8 @@ async function deleteMessage(msgId) {
             sender: getMyId(),
             senderName: getMyName(),
             text,
-            replyTo: replyingTo
-        });
+            replyTo: replyingTo, expiresAt: activeDisappearingSecs > 0 ? new Date(Date.now() + activeDisappearingSecs * 1000) : null });
+
         input.value = '';
         cancelReply();
     }
@@ -2487,24 +2575,162 @@ function closeSettings() {
     document.getElementById('settingsScreen').classList.remove('active');
 }
 
+let prefs = { pinned: [], archived: [], starred: [], blocked: [] };
+async function loadPrefs() {
+  try { const r = await fetch('/api/prefs/' + getMyId()); prefs = await r.json(); } catch(e) {}
+}
+async function savePrefs(field, value) {
+  prefs[field] = value;
+  try { await fetch('/api/prefs/' + getMyId(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, value }) }); } catch(e) {}
+  loadContacts();
+}
+function togglePin() {
+  if (!activeRoomId) return;
+  const has = prefs.pinned.includes(activeRoomId);
+  const list = has ? prefs.pinned.filter(x => x !== activeRoomId) : [...prefs.pinned, activeRoomId];
+  savePrefs('pinned', list);
+  document.getElementById('pinMenuItem').innerText = has ? 'Pin chat' : 'Unpin chat';
+}
+function toggleArchive() {
+  if (!activeRoomId) return;
+  const has = prefs.archived.includes(activeRoomId);
+  const list = has ? prefs.archived.filter(x => x !== activeRoomId) : [...prefs.archived, activeRoomId];
+  savePrefs('archived', list);
+  document.getElementById('archiveMenuItem').innerText = has ? 'Archive chat' : 'Unarchive chat';
+  if (!has) closeChatWindow();
+}
+function toggleStar() {
+  if (!activeRoomId) return;
+  const has = prefs.starred.includes(activeRoomId);
+  const list = has ? prefs.starred.filter(x => x !== activeRoomId) : [...prefs.starred, activeRoomId];
+  savePrefs('starred', list);
+  document.getElementById('starMenuItem').innerText = has ? 'Star messages' : 'Unstar messages';
+}
+function updateChatMenuItemLabels() {
+  if (!activeRoomId) return;
+  document.getElementById('pinMenuItem').innerText = prefs.pinned.includes(activeRoomId) ? 'Unpin chat' : 'Pin chat';
+  document.getElementById('archiveMenuItem').innerText = prefs.archived.includes(activeRoomId) ? 'Unarchive chat' : 'Archive chat';
+  document.getElementById('starMenuItem').innerText = prefs.starred.includes(activeRoomId) ? 'Unstar messages' : 'Star messages';
+}
+let activeDisappearingSecs = 0;
+let activeGroupId = null;
+async function openGroupInfo() {
+  if (!activeRoomId || !activeRoomId.startsWith('group_')) return;
+  activeGroupId = activeRoomId;
+  document.getElementById('groupInfoScreen').classList.add('active');
+  try {
+    const r = await fetch('/api/groups/info/' + activeGroupId);
+    const g = await r.json();
+    document.getElementById('giName').innerText = g.name || activeChatName;
+    document.getElementById('giCount').innerText = (g.members || []).length + ' members';
+    const ml = document.getElementById('giMembersList');
+    ml.innerHTML = '';
+    const ur = await fetch('/api/users');
+    const users = await ur.json();
+    (g.members || []).forEach(mid => {
+      const u = users.find(x => x._id === mid);
+      if (!u) return;
+      const el = document.createElement('div');
+      el.className = 'contact-list-item';
+      el.innerHTML = '<div class="avatar" style="background:#00a884;">' + (u.avatarUrl ? '<img src="' + u.avatarUrl + '">' : u.name.charAt(0).toUpperCase()) + '</div><div><div class="name">' + u.name + '</div><div class="status">' + u.identifier + '</div></div>';
+      ml.appendChild(el);
+    });
+  } catch (e) {}
+}
+function closeGroupInfo() { document.getElementById('groupInfoScreen').classList.remove('active'); }
+async function openAddMemberPicker() {
+  if (!activeGroupId) return;
+  const ur = await fetch('/api/users');
+  const users = await ur.json();
+  const others = users.filter(u => u._id !== getMyId());
+  const names = others.map((u, i) => (i + 1) + '. ' + u.name).join('\n');
+  const pick = prompt('Add which member?\n\n' + names + '\n\nEnter number:');
+  const idx = parseInt(pick) - 1;
+  if (isNaN(idx) || !others[idx]) return;
+  await fetch('/api/groups/addMember', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId: activeGroupId, userId: others[idx]._id }) });
+  openGroupInfo();
+}
+function openDisappearingPicker() { document.getElementById('disappearingPicker').classList.add('active'); }
+function closeDisappearingPicker() { document.getElementById('disappearingPicker').classList.remove('active'); }
+async function setDisappearing(seconds) {
+  if (!activeRoomId) return;
+  activeDisappearingSecs = seconds;
+  await fetch('/api/messages/setDisappearing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roomId: activeRoomId, seconds }) });
+  closeDisappearingPicker();
+  updateDisappearingBadge();
+  alert(seconds === 0 ? 'Disappearing messages off' : 'Disappearing messages on');
+}
+function updateDisappearingBadge() {
+  const hdr = document.querySelector('.chat-window-header .name');
+  document.querySelectorAll('.dm-timer').forEach(el => el.remove());
+  if (activeDisappearingSecs > 0 && hdr) {
+    const d = document.createElement('span');
+    d.className = 'dm-timer';
+    d.innerText = activeDisappearingSecs === 86400 ? '24h' : activeDisappearingSecs === 604800 ? '7d' : activeDisappearingSecs === 7776000 ? '90d' : '';
+    hdr.appendChild(d);
+  }
+}
+async function openBroadcastPicker() {
+  document.getElementById('broadcastPicker').classList.add('active');
+  const c = document.getElementById('broadcastContactList');
+  c.innerHTML = '';
+  const r = await fetch('/api/users');
+  const u = await r.json();
+  u.filter(x => x._id !== getMyId()).forEach(x => {
+    const d = document.createElement('div');
+    d.className = 'contact-list-item';
+    d.dataset.uid = x._id;
+    d.innerHTML = '<div class="avatar" style="background:#00a884;">' + x.name.charAt(0).toUpperCase() + '</div><div><div class="name">' + x.name + '</div><div class="status">' + x.identifier + '</div></div>';
+    d.onclick = () => d.classList.toggle('selected');
+    c.appendChild(d);
+  });
+}
+function closeBroadcastPicker() { document.getElementById('broadcastPicker').classList.remove('active'); }
+async function createBroadcast() {
+  const name = document.getElementById('broadcastName').value.trim();
+  const picks = Array.from(document.querySelectorAll('#broadcastContactList .selected')).map(el => el.dataset.uid);
+  if (!name || picks.length === 0) return alert('Enter name and pick members');
+  const gid = 'broadcast_' + Date.now();
+  await fetch('/api/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, members: picks, createdBy: getMyId() }) });
+  closeBroadcastPicker();
+  alert('Broadcast created');
+}
 function closeDrawer() {
     document.getElementById('threeDotMenu').style.display = 'none';
 }
 const APP_ICONS = [
   { name: 'Default', bg: '#25d366', fg: '#ffffff' },
-  { name: 'Light', bg: '#e7fce3', fg: '#00a884' },
-  { name: 'Dark', bg: '#111b21', fg: '#25d366' },
-  { name: 'Black', bg: '#000000', fg: '#ffffff' },
-  { name: 'Sunset', bg: 'linear-gradient(135deg,#ff9a3c,#ff4b8b)', fg: '#ffffff' },
-  { name: 'Ocean', bg: 'linear-gradient(135deg,#00c6ff,#0072ff)', fg: '#ffffff' },
-  { name: 'Purple', bg: 'linear-gradient(135deg,#a18cd1,#fbc2eb)', fg: '#4a148c' },
-  { name: 'Mint', bg: '#a8e6cf', fg: '#008069' },
-  { name: 'Rose', bg: '#ffd3e0', fg: '#d81b60' }
+  { name: 'Classic Green', bg: '#00a884', fg: '#ffffff' },
+  { name: 'Teal', bg: '#128c7e', fg: '#ffffff' },
+  { name: 'Navy', bg: '#0b141a', fg: '#25d366' },
+  { name: 'Night Blue', bg: 'linear-gradient(135deg,#0b141a,#1e3a5f)', fg: '#7ec8ff' },
+  { name: 'Neon Purple', bg: 'linear-gradient(135deg,#1e1b4b,#6b21a8)', fg: '#e9d5ff' },
+  { name: 'Rose', bg: '#fce7f3', fg: '#db2777' },
+  { name: 'Lavender', bg: '#f3e8ff', fg: '#7c3aed' },
+  { name: 'Peach', bg: '#ffe8d6', fg: '#ea580c' },
+  { name: 'Mint', bg: '#e7fce3', fg: '#008069' },
+  { name: 'Sky', bg: '#e0f2fe', fg: '#0284c7' },
+  { name: 'Sunset', bg: 'linear-gradient(135deg,#ff9a3c,#ff4b8b)', fg: '#ffffff' }
 ];
 const APP_THEMES = [
-  { name: 'Green', bg: '#00a884' }, { name: 'Teal', bg: '#00897b' }, { name: 'Blue', bg: '#0d6efd' },
-  { name: 'Purple', bg: '#7c3aed' }, { name: 'Pink', bg: '#e91e63' }, { name: 'Red', bg: '#e74c3c' },
-  { name: 'Orange', bg: '#f39c12' }, { name: 'Grey', bg: '#54656f' }
+  { name: 'Green', bg: '#00a884' },
+  { name: 'Dark', bg: '#2b2b2b' },
+  { name: 'Sky', bg: '#00bfff' },
+  { name: 'Purple', bg: '#b25de8' },
+  { name: 'Pink', bg: '#e91e63' },
+  { name: 'Blue', bg: '#4169e1' },
+  { name: 'DeepBlue', bg: '#0f4c75' },
+  { name: 'Violet', bg: '#6a5acd' },
+  { name: 'Olive', bg: '#6f9e1c' },
+  { name: 'Teal', bg: '#00c2a8' },
+  { name: 'SeaTeal', bg: '#00897b' },
+  { name: 'Forest', bg: '#2e5339' },
+  { name: 'Yellow', bg: '#e8d500' },
+  { name: 'Sand', bg: '#c7b299' },
+  { name: 'Brown', bg: '#8b5e3c' },
+  { name: 'Maroon', bg: '#5d0e1f' },
+  { name: 'Gold', bg: '#f0b400' },
+  { name: 'Coral', bg: '#f08080' }
 ];
 function renderIconGrid() {
   const g = document.getElementById('iconGrid'); if (!g) return;
@@ -2514,7 +2740,8 @@ function renderIconGrid() {
     const d = document.createElement('div');
     d.className = 'icon-item' + (ic.name === saved ? ' selected' : '');
     d.style.background = ic.bg;
-    d.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-comment" style="font-size:36px;color:' + ic.fg + ';"></i></div>';
+    const svg = '<svg viewBox="0 0 24 24" fill="' + ic.fg + '" style="width:44px;height:44px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
+d.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">' + svg + '</div>';
     d.onclick = () => { playClickSound(); localStorage.setItem('wa_icon', ic.name); renderIconGrid(); applyAppIcon(ic); };
     g.appendChild(d);
   });
@@ -2536,6 +2763,30 @@ function renderThemeGrid() {
     d.onclick = () => { playClickSound(); localStorage.setItem('wa_theme', t.name); renderThemeGrid(); applyAppTheme(t.bg); };
     g.appendChild(d);
   });
+}
+function toggleDarkMode() {
+  const cur = localStorage.getItem('wa_dark') || 'off';
+  const next = cur === 'on' ? 'off' : 'on';
+  localStorage.setItem('wa_dark', next);
+  applyDarkMode(next);
+}
+function applyDarkMode(state) {
+  const t = document.getElementById('darkModeToggle');
+  const sub = document.getElementById('darkModeSub');
+  if (state === 'on') {
+    document.documentElement.style.setProperty('--bg', '#0b141a');
+    document.body.style.background = '#0b141a';
+    document.querySelector('.app-container').style.background = '#111b21';
+    if (t) t.className = 'toggle on';
+    if (t) t.innerHTML = '<i class="fas fa-check"></i>';
+    if (sub) sub.innerText = 'On';
+  } else {
+    document.body.style.background = '#d1d7db';
+    document.querySelector('.app-container').style.background = '#fff';
+    if (t) t.className = 'toggle off';
+    if (t) t.innerHTML = '<i class="fas fa-minus"></i>';
+    if (sub) sub.innerText = 'Off';
+  }
 }
 function applyAppTheme(color) {
   document.documentElement.style.setProperty('--primary', color);
@@ -2573,7 +2824,7 @@ function requestNotificationPermission() {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'default') Notification.requestPermission();
 }
-function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');}
+function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');updateChatMenuItemLabels();}
 function closeChatMenu(){document.getElementById('chatMenu').classList.remove('active');}
 document.addEventListener('click',e=>{if(!e.target.closest('.chat-menu')&&!e.target.closest('.chat-window-header'))document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));});
 function openContactInfo(){if(!activeChatUserId)return;document.getElementById('contactInfoScreen').classList.add('active');document.getElementById('ciName').innerText=activeChatName;const a=document.getElementById('ciAvatar');a.style.background='#00a884';fetch('/api/users').then(r=>r.json()).then(us=>{const u=us.find(x=>x._id===activeChatUserId);if(u){document.getElementById('ciId').innerText=u.identifier;if(u.avatarUrl)a.innerHTML=`<img src="${u.avatarUrl}">`;else a.innerText=u.name.charAt(0).toUpperCase();}});}
@@ -2617,6 +2868,11 @@ socket.on('newCallLogged', () => {
 
 socket.on('newStatus', () => loadStatuses());
 
+socket.on('messageReacted', (d) => { if (d.roomId !== activeRoomId) return; const el = document.querySelector('#messagesArea [data-msg-id="' + d.msgId + '"]'); if (el) renderReactions(el, d.reactions); });
+socket.on('messageEdited', (d) => { if (d.roomId !== activeRoomId) return; const el = document.querySelector('#messagesArea [data-msg-id="' + d.msgId + '"]'); if (!el) return; const t = el.querySelector('.msg-text'); if (t) t.innerText = d.text; if (!el.querySelector('.msg-edited')) { const timeEl = el.querySelector('.msg-time'); if (timeEl) timeEl.insertAdjacentHTML('afterbegin', '<span class="msg-edited">(edited) </span>'); } });
+document.addEventListener('click', (e) => { if (!e.target.closest('.reaction-picker')) closeReactionPicker(); });
+socket.on('groupUpdated', () => { if (activeRoomId && activeRoomId.startsWith('group_')) openGroupInfo(); });
+socket.on('disappearingUpdated', (d) => { if (d.roomId === activeRoomId) { activeDisappearingSecs = d.seconds; updateDisappearingBadge(); } });
 socket.on('newMessage', (msg) => {
     if (msg.roomId !== activeRoomId) return;
     renderMessage(msg);
@@ -2698,6 +2954,7 @@ meRow.dataset.roomId = makeRoomId(getMyId(), getMyId());
             </div>`;
         meRow.onclick = () => openChatWindow(getMyName() + ' (You)', getMyId());
         chatList.appendChild(meRow);
+meRow.dataset.pinned = '0';
 
         // Other users
         users.filter(u => u._id !== getMyId()).forEach(u => {
@@ -2718,11 +2975,31 @@ el.dataset.roomId = makeRoomId(getMyId(), u._id);
                     <div class="chat-row-1"><span class="chat-name">${u.name}</span></div>
                     <div class="chat-row-2"><span class="chat-msg">${statusText}</span></div>
                 </div>`;
-            chatList.appendChild(el);
+            const isPinned = prefs.pinned.includes(el.dataset.roomId);
+el.dataset.pinned = isPinned ? '1' : '0';
+if (isPinned) { const pin = document.createElement('i'); pin.className = 'fas fa-thumbtack pin-icon'; el.querySelector('.chat-row-2').appendChild(pin); }
+chatList.appendChild(el);
         });
 
         applyChatFilter();
 refreshUnread();
+// Re-sort so pinned chats appear on top
+const rows = Array.from(chatList.children);
+rows.sort((a, b) => (b.dataset.pinned === '1' ? 1 : 0) - (a.dataset.pinned === '1' ? 1 : 0));
+chatList.innerHTML = '';
+rows.forEach(r => chatList.appendChild(r));
+// Archive toggle
+const arch = document.getElementById('archivedList');
+arch.innerHTML = '';
+const archivedRows = rows.filter(r => prefs.archived.includes(r.dataset.roomId));
+if (archivedRows.length > 0) {
+  const t = document.createElement('div');
+  t.className = 'archive-toggle';
+  t.innerHTML = '<i class="fas fa-archive"></i> <span>Archived (' + archivedRows.length + ')</span>';
+  t.onclick = () => { archivedRows.forEach(r => { r.style.display = r.style.display === 'none' ? '' : 'none'; r.classList.add('archived-item'); }); };
+  arch.appendChild(t);
+  archivedRows.forEach(r => { chatList.removeChild(r); r.style.display = 'none'; arch.appendChild(r); });
+}
     } catch (err) {
         console.warn('loadContacts failed:', err);
     }
