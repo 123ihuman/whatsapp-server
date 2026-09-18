@@ -1084,7 +1084,6 @@
                 <div class="settings-row" onclick="workInProgress('Transfer chats')"><div class="settings-icon"><i class="fas fa-exchange-alt"></i></div><div class="settings-row-text">Transfer chats</div></div>
                 <div class="settings-row" onclick="workInProgress('Chat history')"><div class="settings-icon"><i class="fas fa-history"></i></div><div class="settings-row-text">Chat history</div></div>
                 <div class="settings-row" onclick="workInProgress('Private Processing')"><div class="settings-icon"><i class="fas fa-lock"></i></div><div class="settings-row-text">Private Processing</div></div>
-<div class="settings-row" onclick="openSettings('fontSize')">
             </div>
         </div>
 
@@ -1168,11 +1167,13 @@
                     <div class="theme-circle"></div>
                 </div>
             </div>
-            <div class="settings-list" style="border-top:none;">
+                    <div class="settings-list" style="border-top:none;">
                 <div class="settings-row" onclick="workInProgress('WhatsApp Plus')" style="justify-content:center;text-align:center;">
                     <div class="settings-row-text" style="color:#667781;font-size:14px;">Subscribe to WhatsApp Plus to change your app icon, theme and more. <span style="color:#00a884;">Explore benefits</span></div>
                 </div>
             </div>
+        </div>
+
         <!-- APP ICON -->
         <div class="settings-page" id="set_appIcon">
             <div class="settings-topbar"><i class="fas fa-arrow-left" onclick="openSettings('appearance')"></i><div class="settings-title">App icon</div></div>
@@ -1198,8 +1199,7 @@
                 <input type="range" id="fontSlider" min="13" max="22" step="1" value="17" style="width:100%;" oninput="updateFontPreview(this.value)">
                 <div style="display:flex;justify-content:space-between;margin-top:15px;color:#667781;font-size:13px;"><span>Small</span><span>Medium</span><span>Large</span></div>
             </div>
-            <button class="settings-cta" onclick="saveFontSize()">Save</button>
-        </div>
+                        <button class="settings-cta" onclick="saveFontSize()">Save</button>
         </div>
 
         <!-- LINKED DEVICES -->
@@ -2622,9 +2622,7 @@ socket.on('newMessage', (msg) => {
     renderMessage(msg);
     if (msg.sender !== getMyId()) {
         playReceiveSound();
-      showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
-      if (document.hidden) refreshUnread();
-      showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
+            showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
       if (document.hidden) refreshUnread();
         // If the chat is open, mark incoming messages as read immediately
         fetch('/api/messages/read', {
