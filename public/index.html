@@ -117,7 +117,6 @@
         .call-icon i { font-size: 20px; color: #00a884; }
 
         .chat-window { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #efeae2; z-index: 3000; display: none; flex-direction: column; }
-        .chat-window-header { background: #fff; height: 60px; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid #e0e0e0; }
         .chat-window-header i { font-size: 24px; color: #111b21; margin-right: 15px; cursor: pointer; }
         .chat-window-header .avatar { width: 40px; height: 40px; margin-right: 10px; }
         .chat-window-header .name { font-size: 17px; font-weight: 500; color: #111b21; flex-grow: 1; }
@@ -125,9 +124,17 @@
     background: #f0f2f5; height: 60px; display: flex; align-items: center;
     padding: 0 15px; border-bottom: 1px solid #e0e0e0;
 }
-.chat-window-header i { color: #54656f; }
 .chat-window-header .name { color: #111b21; }
-.chat-window-header .name { color: #111b21; }
+
+.messages-area {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background-color: #efeae2;
+    background-image: url('/whatsapp-bg.png');
+    background-size: 400px;
+    background-repeat: repeat;
+}
 
 /* ============ MESSAGE + INPUT BAR ============ */
 .msg {
@@ -173,18 +180,6 @@
     color: #8696a0;
     cursor: pointer;
     padding: 4px;
-}
-/* =============================================== */
-
-        .messages-area {
-        .messages-area {
-    flex-grow: 1;
-    padding: 15px;
-    overflow-y: auto;
-    background-color: #efeae2;
-    background-image: url('/whatsapp-bg.png');
-    background-size: 400px;
-    background-repeat: repeat;
 }
 
 /* ---------- DARK MODE ---------- */
