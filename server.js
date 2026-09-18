@@ -252,6 +252,22 @@ app.get('/api/prefs/:userId', async (req, res) => {
   try { let p = await UserPrefs.findOne({ userId: req.params.userId }); if (!p) p = await UserPrefs.create({ userId: req.params.userId }); res.json(p); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.get('/api/starred/:userId', async (req, res) => {
+  try {
+    const uid = req.params.userId;
+    const prefs = await UserPrefs.findOne({ userId: uid });
+    if (!prefs || !prefs.starred || prefs.starred.length === 0) return res.json([]);
+    const msgs = await Message.find({ roomId: { $in: prefs.starred }, deleted: false }).sort({ createdAt: -1 }).limit(200);
+    res.json(msgs);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/unblock', async (req, res) => {
+  try {
+    const { userId, targetId } = req.body;
+    await UserPrefs.updateOne({ userId }, { $pull: { blocked: targetId } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/prefs/:userId', async (req, res) => {
   try { const { field, value } = req.body; const upd = {}; upd[field] = value;
     await UserPrefs.findOneAndUpdate({ userId: req.params.userId }, { $set: upd }, { upsert: true });

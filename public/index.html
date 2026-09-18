@@ -190,8 +190,10 @@
 }
 .send-btn:hover { background: #008069; }
 
-        .chat-menu{position:fixed;top:80px;right:calc(50vw - 210px + 20px);background:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.25);border-radius:8px;width:230px;z-index:1600;display:none;padding:8px 0;}
+        .chat-menu{position:absolute;top:60px;right:10px;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.25);border-radius:8px;width:230px;z-index:3500;display:none;padding:8px 0;}
 .chat-menu.active{display:block;}
+.chat-menu{position:fixed !important;top:70px !important;right:calc(50vw - 200px) !important;}
+.chat-menu{position:fixed !important;top:70px !important;right:calc(50vw - 200px) !important;}
 .chat-menu .menu-item{padding:12px 20px;font-size:15px;color:#111b21;cursor:pointer;}
 .chat-menu .menu-item:hover{background:#f5f6f6;}
 .new-group-screen,.contact-info-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2500;display:none;overflow-y:auto;padding-bottom:40px;}
@@ -341,6 +343,19 @@
 .reply-bar .rq-text { color: #667781; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .reply-bar .rq-close { cursor: pointer; color: #54656f; font-size: 18px; padding: 5px; }
 .msg.deleted .msg-text { font-style: italic; color: #8696a0; opacity: 0.8; }
+.emoji-picker{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);width:340px;height:300px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.25);z-index:5000;display:none;flex-direction:column;overflow:hidden;}
+.emoji-picker.active{display:flex;}
+.emoji-cats{display:flex;justify-content:space-around;padding:8px 0;border-bottom:1px solid #e0e0e0;background:#f7f8fa;font-size:20px;}
+.emoji-cats span{cursor:pointer;padding:4px 8px;border-radius:8px;}
+.emoji-cats span.active{background:#d9fdd3;}
+.emoji-grid{flex-grow:1;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:10px;overflow-y:auto;}
+.emoji-grid span{font-size:22px;cursor:pointer;text-align:center;padding:4px;border-radius:6px;}
+.emoji-grid span:hover{background:#f0f2f5;}
+.starred-item{padding:12px 16px;border-bottom:1px solid #f0f2f5;}
+.starred-item .si-head{font-size:13px;color:#00a884;font-weight:600;margin-bottom:4px;}
+.starred-item .si-body{font-size:14px;color:#111b21;}
+.starred-screen,.blocked-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2650;display:none;overflow-y:auto;padding-bottom:40px;}
+.starred-screen.active,.blocked-screen.active{display:block;}
 .reaction-picker { position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:#fff;border-radius:40px;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:none;padding:8px 12px;gap:8px;z-index:5000; }
 .reaction-picker.active { display:flex; }
 .reaction-opt { width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;transition:transform .15s; }
@@ -679,7 +694,7 @@
 </div>
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
 <div class="app-container">
-       <div class="chat-menu" id="chatMenu">
+       <div class="chat-menu" id="chatMenu" onclick="event.stopPropagation();">
 <div class="menu-item" onclick="closeChatMenu();openContactInfo()">Contact info</div>
 <div class="menu-item" onclick="closeChatMenu();openGroupInfo()" id="groupInfoMenuItem" style="display:none;">Group info</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Search in chat')">Search</div>
@@ -754,12 +769,20 @@
 <div id="broadcastContactList"></div>
 <button class="settings-cta" onclick="createBroadcast()">Create</button>
 </div>
+<div class="starred-screen" id="starredScreen">
+<div class="select-header"><i class="fas fa-arrow-left" onclick="closeStarredScreen()"></i><div>Starred messages</div></div>
+<div id="starredList"></div>
+</div>
+<div class="blocked-screen" id="blockedScreen">
+<div class="select-header"><i class="fas fa-arrow-left" onclick="closeBlockedScreen()"></i><div>Blocked contacts</div></div>
+<div id="blockedList"></div>
+</div>
 <div class="three-dot-menu" id="threeDotMenu">
         <div class="menu-item" onclick="closeDrawer();createNewGroup()">New group</div>
         <div class="menu-item" onclick="closeDrawer();workInProgress('New community')">New community</div>
         <div class="menu-item" onclick="closeDrawer();openBroadcastPicker()">Broadcast lists</div>
         <div class="menu-item" onclick="closeDrawer();openSettings('linkedDevices')">Linked devices</div>
-        <div class="menu-item" onclick="closeDrawer();workInProgress('Starred messages')">Starred</div>
+        <div class="menu-item" onclick="closeDrawer();openStarredScreen()">Starred</div>
         <div class="menu-item" onclick="closeDrawer();openUPI()">Payments</div>
         <div class="menu-item" onclick="closeDrawer();workInProgress('Read all')">Read all</div>
         <div class="menu-item" onclick="closeDrawer();openSettings('home')">Settings <span class="settings-dot"></span></div>
@@ -767,7 +790,7 @@
 
     <div class="screen active" id="chatsScreen">
         <div class="header">
-            <div class="logo">WhatsApp</div>
+            <div class="logo"><span id="logoIcon" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#25d366;margin-right:8px;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="#fff" style="width:16px;height:16px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span><span id="logoText">WhatsApp</span></div>
             <div class="header-actions">
                 <span class="rupee-icon" onclick="openUPI()">₹</span>
                 <i class="fas fa-camera" onclick="openCamera()" style="cursor:pointer;"></i>
@@ -874,7 +897,7 @@
         </div>
                         <div class="chat-input">
             <div class="input-wrapper">
-                <i class="far fa-smile"></i>
+                <i class="far fa-smile" onclick="toggleEmojiPicker(event)" style="cursor:pointer;"></i>
                 <input type="text" id="chatInput" placeholder="Message">
                 <i class="fas fa-camera" onclick="document.getElementById('chatFileInput').click()" title="Camera"></i>
                 <i class="fas fa-paperclip" onclick="document.getElementById('chatFileInput').click()" title="Attach"></i>
@@ -1070,7 +1093,8 @@
                 <div class="settings-row" onclick="workInProgress('Groups')"><div class="settings-row-text">Groups<br><span class="settings-sub">Everyone</span></div></div>
                 <div class="settings-row" onclick="workInProgress('Live location')"><div class="settings-row-text">Live location</div></div>
                 <div class="settings-row" onclick="workInProgress('Calls')"><div class="settings-row-text">Calls<br><span class="settings-sub">Silence unknown callers</span></div></div>
-                <div class="settings-row" onclick="workInProgress('Blocked contacts')"><div class="settings-row-text">Contacts<br><span class="settings-sub">Blocked accounts, WhatsApp contacts</span></div></div>
+                <div class="settings-row" onclick="openBlockedScreen()">
+<div class="settings-row-text">Contacts<br><span class="settings-sub">Blocked accounts, WhatsApp contacts</span></div></div>
                 <div class="settings-row" onclick="workInProgress('App lock')"><div class="settings-row-text">App lock<br><span class="settings-sub">Disabled</span></div></div>
                 <div class="settings-row" onclick="workInProgress('Chat lock')"><div class="settings-row-text">Chat lock</div></div>
                 <div class="settings-row">
@@ -1301,6 +1325,17 @@
 <div class="reaction-opt" onclick="sendReaction('😢')">😢</div>
 <div class="reaction-opt" onclick="sendReaction('👍')">👍</div>
 <div class="reaction-opt" onclick="sendReaction('🙏')">🙏</div>
+</div>
+<div class="emoji-picker" id="emojiPicker">
+<div class="emoji-cats">
+<span onclick="loadEmojiCat('smileys')" class="active">😀</span>
+<span onclick="loadEmojiCat('hands')">👍</span>
+<span onclick="loadEmojiCat('hearts')">❤️</span>
+<span onclick="loadEmojiCat('animals')">🐶</span>
+<span onclick="loadEmojiCat('food')">🍔</span>
+<span onclick="loadEmojiCat('objects')">💡</span>
+</div>
+<div class="emoji-grid" id="emojiGrid"></div>
 </div>
 
     <!-- Reaction bar -->
@@ -2695,6 +2730,71 @@ async function createBroadcast() {
   closeBroadcastPicker();
   alert('Broadcast created');
 }
+const EMOJI_LIB = {
+  smileys: '😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😗 😙 😚 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 😴 😪 😌 😔 😕 🙁 😞 😟 😤 😠 😡 🤬 😱 😨 😰 😥 😢 😭 😂 😈 👿 💀 ☠️ 👻 👽 🤖 💩 😺 😸 😹 😻 😼 😽 🙀 😿 😾',
+  hands: '👍 👎 👌 ✌️ 🤞 🤟 🤘 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤙 💪 🙏 🤝 👏 🙌 👐 🤲 🤜 🤛 ✊ 👊',
+  hearts: '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ♥️ 💯 🔥 ✨ ⭐ 🌟 💫 💥 💢 💨 💦 💤',
+  animals: '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐤 🦆 🦅 🦉 🦇 🐺 🐗 🐴 🦄 🐝 🐛 🦋 🐌 🐞 🐜 🦗 🕷️ 🕸️ 🦂',
+  food: '🍏 🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍈 🍒 🍑 🍍 🥝 🍅 🥑 🥦 🥕 🌽 🌶️ 🥒 🥬 🍄 🥜 🍞 🥐 🥖 🥨 🥯 🥞 🧀 🍖 🍗 🥩 🥓 🍔 🍟 🍕',
+  objects: '💡 🔦 🕯️ 🧯 🛢️ 💸 💵 💰 💳 💎 ⚖️ 🔧 🔨 ⚒️ 🛠️ ⛏️ 🔩 ⚙️ ⛓️ 🧲 🔫 💣 🧨 🪓 🔪 🗡️ ⚔️ 🛡️ 🚬 ⚰️ 🪦 🏺 🔮 📿 🧿 💈 ⚗️'
+};
+function toggleEmojiPicker(e){e.stopPropagation();const p=document.getElementById('emojiPicker');p.classList.toggle('active');if(p.classList.contains('active'))loadEmojiCat('smileys');}
+function loadEmojiCat(cat){
+  document.querySelectorAll('.emoji-cats span').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.emoji-cats span')[Object.keys(EMOJI_LIB).indexOf(cat)].classList.add('active');
+  const g=document.getElementById('emojiGrid');
+  g.innerHTML='';
+  EMOJI_LIB[cat].split(' ').forEach(em=>{const s=document.createElement('span');s.innerText=em;s.onclick=()=>{const i=document.getElementById('chatInput');i.value+=em;i.focus();};g.appendChild(s);});
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.emoji-picker')&&!e.target.closest('.fa-smile'))document.getElementById('emojiPicker').classList.remove('active');});
+async function openStarredScreen(){
+  document.getElementById('starredScreen').classList.add('active');
+  const list=document.getElementById('starredList');
+  list.innerHTML='<div style="text-align:center;padding:20px;color:#8696a0;">Loading…</div>';
+  try{
+    const r=await fetch('/api/starred/'+getMyId());
+    const msgs=await r.json();
+    list.innerHTML='';
+    if(msgs.length===0){list.innerHTML='<div style="text-align:center;padding:30px;color:#8696a0;">No starred messages</div>';return;}
+    const ur=await fetch('/api/users');
+    const users=await ur.json();
+    msgs.forEach(m=>{
+      const otherId=m.sender===getMyId()?m.roomId.replace(getMyId(),'').replace('_',''):m.sender;
+      const el=document.createElement('div');
+      el.className='starred-item';
+      el.innerHTML='<div class="si-head">'+(m.sender===getMyId()?'You':m.senderName)+'</div><div class="si-body">'+(m.text||'(media)')+'</div>';
+      list.appendChild(el);
+    });
+  }catch(e){list.innerHTML='<div style="text-align:center;padding:20px;color:#e74c3c;">Failed to load</div>';}
+}
+function closeStarredScreen(){document.getElementById('starredScreen').classList.remove('active');}
+async function openBlockedScreen(){
+  document.getElementById('blockedScreen').classList.add('active');
+  const list=document.getElementById('blockedList');
+  list.innerHTML='<div style="text-align:center;padding:20px;color:#8696a0;">Loading…</div>';
+  try{
+    const r=await fetch('/api/blocked/'+getMyId());
+    const ids=await r.json();
+    list.innerHTML='';
+    if(ids.length===0){list.innerHTML='<div style="text-align:center;padding:30px;color:#8696a0;">No blocked contacts</div>';return;}
+    const ur=await fetch('/api/users');
+    const users=await ur.json();
+    ids.forEach(id=>{
+      const u=users.find(x=>x._id===id);
+      if(!u)return;
+      const el=document.createElement('div');
+      el.className='contact-list-item';
+      el.innerHTML='<div class="avatar" style="background:#00a884;">'+(u.avatarUrl?'<img src="'+u.avatarUrl+'">':u.name.charAt(0).toUpperCase())+'</div><div style="flex-grow:1;"><div class="name">'+u.name+'</div><div class="status">'+u.identifier+'</div></div><button class="btn-green" style="padding:8px 16px;font-size:14px;" onclick="unblockContact(\''+id+'\')">Unblock</button>';
+      list.appendChild(el);
+    });
+  }catch(e){list.innerHTML='<div style="text-align:center;padding:20px;color:#e74c3c;">Failed to load</div>';}
+}
+function closeBlockedScreen(){document.getElementById('blockedScreen').classList.remove('active');}
+async function unblockContact(id){
+  if(!confirm('Unblock this contact?'))return;
+  await fetch('/api/unblock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:getMyId(),targetId:id})});
+  openBlockedScreen();
+}
 function closeDrawer() {
     document.getElementById('threeDotMenu').style.display = 'none';
 }
@@ -2747,10 +2847,39 @@ d.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:cente
   });
 }
 function applyAppIcon(ic) {
-  const logo = document.querySelector('.logo');
-  if (!logo) return;
-  logo.style.color = ic.fg;
+  const li = document.getElementById('logoIcon');
+  const lt = document.getElementById('logoText');
+  if (li) {
+    li.style.background = ic.bg;
+    li.querySelector('svg').setAttribute('fill', ic.fg);
+  }
+  if (lt) lt.style.color = ic.bg;
   document.documentElement.style.setProperty('--accent', ic.bg);
+  generateAndSetFavicon(ic.bg, ic.fg);
+}
+function generateAndSetFavicon(bg, fg) {
+  const size = 192;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const grd = ctx.createLinearGradient(0, 0, size, size);
+  if (bg.startsWith('linear-gradient')) {
+    const m = bg.match(/#[0-9a-fA-F]{3,6}/g) || ['#25d366'];
+    grd.addColorStop(0, m[0]); grd.addColorStop(1, m[1] || m[0]);
+    ctx.fillStyle = grd;
+  } else ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = fg;
+  ctx.font = 'bold 150px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✆', size / 2, size / 2 + 8);
+  const url = c.toDataURL('image/png');
+  document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
+  const l1 = document.createElement('link'); l1.rel = 'icon'; l1.type = 'image/png'; l1.href = url;
+  const l2 = document.createElement('link'); l2.rel = 'apple-touch-icon'; l2.href = url;
+  document.head.appendChild(l1); document.head.appendChild(l2);
+  localStorage.setItem('wa_favicon', url);
 }
 function renderThemeGrid() {
   const g = document.getElementById('themeGrid'); if (!g) return;
@@ -2790,8 +2919,10 @@ function applyDarkMode(state) {
 }
 function applyAppTheme(color) {
   document.documentElement.style.setProperty('--primary', color);
-  document.querySelectorAll('.nav-item.active, .nav-item.active span, .fab, .send-btn, .btn-green, .auth-box button, .settings-cta').forEach(el => el.style.background = color);
-  const logo = document.querySelector('.logo'); if (logo) logo.style.color = color;
+  document.querySelectorAll('.fab, .send-btn, .btn-green, .auth-box button, .settings-cta').forEach(el => el.style.background = color);
+  document.querySelectorAll('.nav-item.active i, .nav-item.active span').forEach(el => el.style.color = color);
+  document.querySelectorAll('.nav-item.active').forEach(el => el.style.background = 'transparent');
+  const lt = document.getElementById('logoText'); if (lt) lt.style.color = color;
 }
 function updateFontPreview(v) { document.getElementById('fontPreview').style.fontSize = v + 'px'; }
 function saveFontSize() {
@@ -2811,7 +2942,12 @@ function applyFontSize(v) {
   if (t) { const th = APP_THEMES.find(x => x.name === t); if (th) setTimeout(() => applyAppTheme(th.bg), 100); }
   const f = localStorage.getItem('wa_font');
   if (f) { const s = document.getElementById('fontSlider'); if (s) s.value = f; setTimeout(() => applyFontSize(f), 100); }
-  setTimeout(renderIconGrid, 100); setTimeout(renderThemeGrid, 100);
+    setTimeout(renderIconGrid, 100); setTimeout(renderThemeGrid, 100);
+  const ic = localStorage.getItem('wa_icon');
+  if (ic) { const found = APP_ICONS.find(x => x.name === ic); if (found) setTimeout(() => applyAppIcon(found), 200); }
+  const fav = localStorage.getItem('wa_favicon');
+  if (fav) { document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove()); const l1 = document.createElement('link'); l1.rel='icon'; l1.type='image/png'; l1.href=fav; const l2 = document.createElement('link'); l2.rel='apple-touch-icon'; l2.href=fav; document.head.appendChild(l1); document.head.appendChild(l2); }
+})();
 })();
 function showNotification(title, body, msg) {
   if (!('Notification' in window)) return;
@@ -2827,11 +2963,19 @@ function requestNotificationPermission() {
 function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');updateChatMenuItemLabels();}
 function closeChatMenu(){document.getElementById('chatMenu').classList.remove('active');}
 document.addEventListener('click',e=>{if(!e.target.closest('.chat-menu')&&!e.target.closest('.chat-window-header'))document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));});
-function openContactInfo(){if(!activeChatUserId)return;document.getElementById('contactInfoScreen').classList.add('active');document.getElementById('ciName').innerText=activeChatName;const a=document.getElementById('ciAvatar');a.style.background='#00a884';fetch('/api/users').then(r=>r.json()).then(us=>{const u=us.find(x=>x._id===activeChatUserId);if(u){document.getElementById('ciId').innerText=u.identifier;if(u.avatarUrl)a.innerHTML=`<img src="${u.avatarUrl}">`;else a.innerText=u.name.charAt(0).toUpperCase();}});}
+function openContactInfo(){if(!activeChatUserId)return;document.getElementById('contactInfoScreen').classList.add('active');document.getElementById('ciName').innerText=activeChatName;const a=document.getElementById('ciAvatar');a.style.background='#00a884';fetch('/api/users').then(r=>r.json()).then(us=>{const u=us.find(x=>x._id===activeChatUserId);if(u){document.getElementById('ciId').innerText=u.identifier;if(u.about)document.getElementById('ciId').innerText=u.identifier+' • '+u.about;if(u.avatarUrl)a.innerHTML=`<img src="${u.avatarUrl}">`;else a.innerText=u.name.charAt(0).toUpperCase();}});}
 function closeContactInfo(){document.getElementById('contactInfoScreen').classList.remove('active');}
 function clearChat(){if(!confirm('Clear this chat?'))return;fetch('/api/messages/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:activeRoomId})}).then(()=>{document.getElementById('messagesArea').innerHTML='';alert('Chat cleared');});}
 function deleteChat(){if(!confirm('Delete this chat for everyone?'))return;fetch('/api/messages/deleteRoom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId:activeRoomId})}).then(()=>{document.getElementById('messagesArea').innerHTML='';closeChatWindow();});}
-function blockContact(){if(!activeChatUserId)return;if(!confirm('Block '+activeChatName+'?'))return;alert('Blocked');closeChatWindow();}
+async function blockContact(){
+  if(!activeChatUserId)return;
+  if(!confirm('Block '+activeChatName+'?'))return;
+  const cur=prefs.blocked||[];
+  const list=[...new Set([...cur,activeChatUserId])];
+  await savePrefs('blocked',list);
+  alert('Blocked');
+  closeChatWindow();
+}
 function toggleMuteChat(){alert('Muted');}
 // --- SIGNALING SERVER CONNECTION ---
 socket.on('connect', () => {
