@@ -193,7 +193,6 @@
         .chat-menu{position:absolute;top:60px;right:10px;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.25);border-radius:8px;width:230px;z-index:3500;display:none;padding:8px 0;}
 .chat-menu.active{display:block;}
 .chat-menu{position:fixed !important;top:70px !important;right:calc(50vw - 200px) !important;}
-.chat-menu{position:fixed !important;top:70px !important;right:calc(50vw - 200px) !important;}
 .chat-menu .menu-item{padding:12px 20px;font-size:15px;color:#111b21;cursor:pointer;}
 .chat-menu .menu-item:hover{background:#f5f6f6;}
 .new-group-screen,.contact-info-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;z-index:2500;display:none;overflow-y:auto;padding-bottom:40px;}
@@ -1258,7 +1257,7 @@
             <button class="settings-cta" onclick="saveFontSize()">Save</button>
         </div>
 
-        <!-- LINKED DEVICES -->>
+        <!-- LINKED DEVICES -->
         <div class="settings-page" id="set_linkedDevices">
             <div class="settings-topbar">
                 <i class="fas fa-arrow-left" onclick="openSettings('home')"></i>
@@ -2946,8 +2945,7 @@ function applyFontSize(v) {
   const ic = localStorage.getItem('wa_icon');
   if (ic) { const found = APP_ICONS.find(x => x.name === ic); if (found) setTimeout(() => applyAppIcon(found), 200); }
   const fav = localStorage.getItem('wa_favicon');
-  if (fav) { document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove()); const l1 = document.createElement('link'); l1.rel='icon'; l1.type='image/png'; l1.href=fav; const l2 = document.createElement('link'); l2.rel='apple-touch-icon'; l2.href=fav; document.head.appendChild(l1); document.head.appendChild(l2); }
-})();
+    if (fav) { document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove()); const l1 = document.createElement('link'); l1.rel='icon'; l1.type='image/png'; l1.href=fav; const l2 = document.createElement('link'); l2.rel='apple-touch-icon'; l2.href=fav; document.head.appendChild(l1); document.head.appendChild(l2); }
 })();
 function showNotification(title, body, msg) {
   if (!('Notification' in window)) return;
