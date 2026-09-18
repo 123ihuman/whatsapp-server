@@ -326,6 +326,64 @@
 .reply-bar .rq-close { cursor: pointer; color: #54656f; font-size: 18px; padding: 5px; }
 .msg.deleted .msg-text { font-style: italic; color: #8696a0; opacity: 0.8; }
 .msg.deleted .msg-text::before { content: "🚫 "; }
+/* --- AVATAR with image support --- */
+.avatar img {
+    width: 100%; height: 100%; border-radius: 50%;
+    object-fit: cover; display: block;
+}
+.avatar { overflow: hidden; cursor: pointer; }
+.chat-item .avatar { position: relative; }
+.my-status .status-ring img,
+.status-item .status-ring img { object-fit: cover; }
+/* --- STATUS REACTIONS --- */
+.reaction-bar {
+    position: absolute;
+    bottom: 60px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
+    z-index: 10;
+}
+.reaction-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.2s;
+    user-select: none;
+}
+.reaction-btn:hover { transform: scale(1.15); background: rgba(255,255,255,0.3); }
+.reaction-btn:active { transform: scale(1.3); background: rgba(255,255,255,0.5); }
+
+/* Floating emoji layer */
+.emoji-burst-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 5;
+}
+.floating-emoji {
+    position: absolute;
+    bottom: 100px;
+    font-size: 32px;
+    opacity: 0;
+    animation: flyUp 3s ease-out forwards;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+@keyframes flyUp {
+    0%   { opacity: 0;   transform: translateY(0)      scale(0.4) rotate(0deg);  }
+    15%  { opacity: 1;   transform: translateY(-40px)  scale(1.2) rotate(-8deg); }
+    70%  { opacity: 1;   transform: translateY(-55vh)  scale(1.1) rotate(8deg);  }
+    100% { opacity: 0;   transform: translateY(-85vh)  scale(0.9) rotate(20deg); }
+}
 </style>
 </head>
 <body>
@@ -346,6 +404,7 @@
         </div>
     </div>
 </div>
+<input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
 <div class="app-container">
     <div class="three-dot-menu" id="threeDotMenu">
         <div class="menu-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
@@ -371,12 +430,12 @@
 </div>
         </div>
 
-        <div class="chips">
-            <div class="chip active">All</div>
-            <div class="chip">Unread 14</div>
-            <div class="chip">Favorites</div>
-            <div class="chip">Groups</div>
-            <div class="chip plus">+</div>
+                <div class="chips">
+            <div class="chip active" data-filter="all" onclick="setChatFilter('all', this)">All</div>
+            <div class="chip" data-filter="unread" onclick="setChatFilter('unread', this)">Unread</div>
+            <div class="chip" data-filter="favorites" onclick="setChatFilter('favorites', this)">Favorites</div>
+            <div class="chip" data-filter="groups" onclick="setChatFilter('groups', this)">Groups</div>
+            <div class="chip plus" onclick="workInProgress('New list')">+</div>
         </div>
 
         <div class="pinned-chats"><div class="pin-header"><span>Pinned</span><i class="fas fa-chevron-down"></i></div></div>
@@ -511,6 +570,19 @@
     </div>
     <div class="status-viewer-content" id="svContent"></div>
     <div class="status-viewer-time" id="svTime"></div>
+
+    <!-- Floating emoji animation layer -->
+    <div class="emoji-burst-layer" id="emojiBurstLayer"></div>
+
+    <!-- Reaction bar -->
+    <div class="reaction-bar">
+        <div class="reaction-btn" onclick="sendStatusReaction('❤️', this)">❤️</div>
+        <div class="reaction-btn" onclick="sendStatusReaction('🔥', this)">🔥</div>
+        <div class="reaction-btn" onclick="sendStatusReaction('😍', this)">😍</div>
+        <div class="reaction-btn" onclick="sendStatusReaction('👍', this)">👍</div>
+        <div class="reaction-btn" onclick="sendStatusReaction('🍃', this)">🍃</div>
+        <div class="reaction-btn" onclick="sendStatusReaction('💧', this)">💧</div>
+    </div>
 </div>
 <script>
         // --- SOCKET CONNECTION (must be first!) ---
@@ -696,9 +768,17 @@ async function openChatWindow(name, userId) {
     playClickSound();
     activeChatName = name;
     document.getElementById('chatName').innerText = name;
-    const avatar = document.getElementById('chatAvatar');
-    avatar.innerText = name.charAt(0).toUpperCase();
+        const avatar = document.getElementById('chatAvatar');
     avatar.style.background = '#00a884';
+    // try to load peer avatar
+    fetch('/api/users').then(r => r.json()).then(users => {
+        const peer = users.find(u => u._id === userId);
+        if (peer && peer.avatarUrl) {
+            avatar.innerHTML = `<img src="${peer.avatarUrl}" alt="">`;
+        } else {
+            avatar.innerText = name.charAt(0).toUpperCase();
+        }
+    });
 
     activeChatUserId = userId;
     activeRoomId = makeRoomId(getMyId(), userId);
@@ -1455,6 +1535,90 @@ async function loadCalls() {
         list.innerHTML = '<div style="text-align:center;padding:20px;color:#e74c3c;">Failed to load calls</div>';
     }
 }
+// --- CHAT FILTERS (chips) ---
+let currentFilter = 'all';
+
+function setChatFilter(filter, el) {
+    playClickSound();
+    currentFilter = filter;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    applyChatFilter();
+}
+
+function applyChatFilter() {
+    const items = document.querySelectorAll('#chatList .chat-item');
+    items.forEach(el => {
+        let show = true;
+        const name = el.querySelector('.chat-name')?.innerText.toLowerCase() || '';
+        const hasUnread = !!el.querySelector('.unread');
+
+        if (currentFilter === 'unread')    show = hasUnread;
+        else if (currentFilter === 'favorites') show = el.dataset.favorite === '1';
+        else if (currentFilter === 'groups') show = el.dataset.group === '1';
+        el.style.display = show ? '' : 'none';
+    });
+}
+
+// --- AVATAR UPLOAD ---
+function triggerAvatarUpload() {
+    document.getElementById('avatarFileInput').click();
+}
+
+async function uploadAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = '';
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+    formData.append('userId', getMyId());
+
+    try {
+        const res = await fetch('/api/avatar', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!data.avatarUrl) throw new Error('Upload failed');
+        // update local user data
+        currentUser.avatarUrl = data.avatarUrl;
+        localStorage.setItem('wa_user', JSON.stringify(currentUser));
+        loadContacts();
+        console.log('✅ Avatar updated:', data.avatarUrl);
+    } catch (e) {
+        alert('Avatar upload failed: ' + e.message);
+    }
+}
+// --- STATUS REACTIONS ---
+function sendStatusReaction(emoji, btnEl) {
+    // Bounce the button
+    if (btnEl) {
+        btnEl.style.transform = 'scale(1.6)';
+        setTimeout(() => btnEl.style.transform = '', 180);
+    }
+    // Spawn 15 emojis with staggered delay
+    for (let i = 0; i < 15; i++) {
+        setTimeout(() => spawnFloatingEmoji(emoji), i * 70);
+    }
+}
+
+function spawnFloatingEmoji(emoji) {
+    const layer = document.getElementById('emojiBurstLayer');
+    if (!layer) return;
+    const el = document.createElement('div');
+    el.className = 'floating-emoji';
+    el.textContent = emoji;
+    // Random horizontal position
+    el.style.left = (5 + Math.random() * 90) + '%';
+    // Random size
+    el.style.fontSize = (22 + Math.random() * 22) + 'px';
+    // Random speed
+    el.style.animationDuration = (2.4 + Math.random() * 1.6) + 's';
+    // Random hue for extra color variety
+    const hue = Math.floor(Math.random() * 360);
+    el.style.filter = `drop-shadow(0 2px 6px rgba(0,0,0,0.5)) hue-rotate(${hue}deg)`;
+    layer.appendChild(el);
+    // Clean up after animation ends
+    setTimeout(() => el.remove(), 4200);
+}
 // --- SIGNALING SERVER CONNECTION ---
 socket.on('connect', () => {
     console.log('✅ Connected to signaling server. My socket ID:', socket.id);
@@ -1462,6 +1626,9 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
     console.log('❌ Disconnected from signaling server');
+});
+socket.on('userAvatarUpdated', () => {
+    loadContacts();
 });
 
 socket.on('offer', handleOffer);
@@ -1526,19 +1693,25 @@ async function loadContacts() {
         const chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
 
-        // Add "My Number" entry
-        const me = document.createElement('div');
-        me.className = 'chat-item';
-        me.onclick = () => openChatWindow(getMyName() + ' (You)', getMyId());
-        me.innerHTML = `
-            <div class="avatar" style="background:#00a884;">My</div>
+        // Find my own record for the avatar
+        const me = users.find(u => u._id === getMyId());
+
+        // "My Number" entry — clicking avatar triggers upload, clicking row opens self-chat
+        const meRow = document.createElement('div');
+        meRow.className = 'chat-item';
+        meRow.dataset.filter = 'all';
+        meRow.innerHTML = `
+            <div class="avatar" style="background:#00a884;" onclick="event.stopPropagation();triggerAvatarUpload()">
+                ${currentUser && currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="">` : 'My'}
+            </div>
             <div class="chat-details">
                 <div class="chat-row-1"><span class="chat-name">${getMyName()} (You)</span></div>
-                <div class="chat-row-2"><span class="chat-msg">Message yourself</span></div>
+                <div class="chat-row-2"><span class="chat-msg">Tap avatar to upload photo</span></div>
             </div>`;
-        chatList.appendChild(me);
+        meRow.onclick = () => openChatWindow(getMyName() + ' (You)', getMyId());
+        chatList.appendChild(meRow);
 
-        // Add all other users
+        // Other users
         users.filter(u => u._id !== getMyId()).forEach(u => {
             const isOnline = onlineUserIds.includes(u._id.toString());
             const statusText = isOnline
@@ -1547,14 +1720,19 @@ async function loadContacts() {
             const el = document.createElement('div');
             el.className = 'chat-item';
             el.onclick = () => openChatWindow(u.name, u._id);
+            const avatarHtml = u.avatarUrl
+                ? `<img src="${u.avatarUrl}" alt="">`
+                : u.name.charAt(0).toUpperCase();
             el.innerHTML = `
-                <div class="avatar" style="background:#00a884;">${u.name.charAt(0).toUpperCase()}</div>
+                <div class="avatar" style="background:#00a884;">${avatarHtml}</div>
                 <div class="chat-details">
                     <div class="chat-row-1"><span class="chat-name">${u.name}</span></div>
                     <div class="chat-row-2"><span class="chat-msg">${statusText}</span></div>
                 </div>`;
             chatList.appendChild(el);
         });
+
+        applyChatFilter();
     } catch (err) {
         console.warn('loadContacts failed:', err);
     }

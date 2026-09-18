@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     name:       { type: String, required: true },
     password:   { type: String, required: true },
+    avatarUrl:  { type: String, default: null },
     lastSeen:   { type: Date, default: Date.now },
     createdAt:  { type: Date, default: Date.now }
 });
@@ -204,6 +205,19 @@ app.get('/api/users', async (req, res) => {
     try {
         const list = await User.find({}, { password: 0 }).sort({ name: 1 });
         res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// ---------- AVATAR UPLOAD ----------
+app.post('/api/avatar', upload.single('avatar'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file' });
+        const { userId } = req.body;
+        const url = `/uploads/${req.file.filename}`;
+        await User.findByIdAndUpdate(userId, { avatarUrl: url });
+        io.emit('userAvatarUpdated', { userId, avatarUrl: url });
+        res.json({ avatarUrl: url });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
