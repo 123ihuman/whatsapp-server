@@ -1,3 +1,20 @@
+require('dotenv').config();
+
+// Firebase Admin — modular API
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getMessaging } = require('firebase-admin/messaging');
+
+try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+    if (serviceAccount.project_id) {
+        initializeApp({ credential: cert(serviceAccount) });
+        console.log('✅ Firebase Admin ready');
+    } else {
+        console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT missing in .env — push disabled');
+    }
+} catch (e) {
+    console.warn('⚠️ Firebase Admin init failed:', e.message);
+}
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -9,9 +26,12 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
+
 const GOOGLE_CLIENT_ID = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-in-production-9a8b7c6d';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET missing in .env');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,12 +40,24 @@ const io = new Server(server, {
 });
 
 // ---------- MONGO ----------
-const MONGO_URI = "mongodb://umadivy500_db_user:Test12345@ac-dn2ahhy-shard-00-00.df7ih5q.mongodb.net:27017,ac-dn2ahhy-shard-00-01.df7ih5q.mongodb.net:27017,ac-dn2ahhy-shard-00-02.df7ih5q.mongodb.net:27017/whatsapp?ssl=true&replicaSet=atlas-13eq8a-shard-0&authSource=admin&retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI;
 
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('✅ Connected to MongoDB Atlas'))
-    .catch(err => console.error('❌ MongoDB error:', err.message));
+mongoose.set('bufferCommands', false);   // fail fast instead of waiting 10s
 
+let mongoReady = false;
+mongoose.connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 8000,
+    socketTimeoutMS: 45000,
+    maxPoolSize: 10
+})
+    .then(() => { mongoReady = true; console.log('Connected to MongoDB Atlas'); })
+    .catch(err => console.error('MongoDB error:', err.message));
+
+// Gate every API request until Mongo is ready
+app.use('/api', (req, res, next) => {
+    if (!mongoReady) return res.status(503).json({ error: 'Database not ready, retry in 5s' });
+    next();
+});
 // Status schema — auto-deletes after 24h via TTL index
 const statusSchema = new mongoose.Schema({
     userId:   { type: String, required: true },
@@ -35,6 +67,7 @@ const statusSchema = new mongoose.Schema({
     createdAt:{ type: Date, default: Date.now, expires: 86400 }
 });
 const Status = mongoose.model('Status', statusSchema);
+
 // Message schema
 const messageSchema = new mongoose.Schema({
     roomId:    { type: String, required: true },
@@ -43,9 +76,9 @@ const messageSchema = new mongoose.Schema({
     text:      { type: String, default: '' },
     mediaUrl:  { type: String, default: null },
     mediaType: { type: String, default: null },
-        replyTo: { type: mongoose.Schema.Types.Mixed, default: null },
+    replyTo:   { type: mongoose.Schema.Types.Mixed, default: null },
     reactions: { type: mongoose.Schema.Types.Mixed, default: {} },
-    edited: { type: Boolean, default: false },
+    edited:    { type: Boolean, default: false },
     forwarded: { type: Boolean, default: false },
     read:      { type: Boolean, default: false },
     deleted:   { type: Boolean, default: false },
@@ -53,7 +86,7 @@ const messageSchema = new mongoose.Schema({
     expiresAt: { type: Date, default: null, index: { expires: 0 } }
 });
 const Message = mongoose.model('Message', messageSchema);
-// Call schema — call history
+
 const userPrefsSchema = new mongoose.Schema({
     userId:  { type: String, required: true, unique: true },
     pinned:  { type: [String], default: [] },
@@ -62,6 +95,7 @@ const userPrefsSchema = new mongoose.Schema({
     blocked: { type: [String], default: [] }
 });
 const UserPrefs = mongoose.model('UserPrefs', userPrefsSchema);
+
 const groupSchema = new mongoose.Schema({
     groupId:   { type: String, required: true, unique: true },
     name:      { type: String, required: true },
@@ -70,6 +104,7 @@ const groupSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 const Group = mongoose.model('Group', groupSchema);
+
 const callSchema = new mongoose.Schema({
     callerId:     { type: String, required: true },
     callerName:   { type: String, required: true },
@@ -80,12 +115,12 @@ const callSchema = new mongoose.Schema({
     createdAt:    { type: Date, default: Date.now }
 });
 const Call = mongoose.model('Call', callSchema);
-// User schema
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     name:       { type: String, required: true },
     password:   { type: String, required: true },
     avatarUrl:  { type: String, default: null },
+    fcmToken:   { type: String, default: null },
     lastSeen:   { type: Date, default: Date.now },
     createdAt:  { type: Date, default: Date.now }
 });
@@ -149,7 +184,6 @@ app.post('/api/message-media', upload.single('media'), async (req, res) => {
 });
 
 // ---------- MESSAGE ROUTES ----------
-// Get messages for a room
 app.get('/api/messages/:roomId', async (req, res) => {
     try {
         const list = await Message.find({ roomId: req.params.roomId })
@@ -160,6 +194,7 @@ app.get('/api/messages/:roomId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 app.post('/api/messages/read', async (req, res) => {
     try {
         const { roomId, userId } = req.body;
@@ -176,6 +211,7 @@ app.post('/api/messages/read', async (req, res) => {
 
 app.post('/api/messages/clear', async (req, res) => { try { await Message.deleteMany({ roomId: req.body.roomId }); io.to(req.body.roomId).emit('chatCleared', { roomId: req.body.roomId }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/messages/deleteRoom', async (req, res) => { try { await Message.deleteMany({ roomId: req.body.roomId }); io.to(req.body.roomId).emit('chatCleared', { roomId: req.body.roomId }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
+
 app.post('/api/messages/setDisappearing', async (req, res) => {
   try {
     const { roomId, seconds } = req.body;
@@ -185,6 +221,7 @@ app.post('/api/messages/setDisappearing', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/messages/react', async (req, res) => {
   try {
     const { msgId, userId, emoji } = req.body;
@@ -197,6 +234,7 @@ app.post('/api/messages/react', async (req, res) => {
     res.json({ ok: true, reactions: r });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/messages/edit', async (req, res) => {
   try {
     const { msgId, userId, text } = req.body;
@@ -208,6 +246,7 @@ app.post('/api/messages/edit', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/messages/forward', async (req, res) => {
   try {
     const { msgId, targetRoomId, userId, senderName } = req.body;
@@ -218,6 +257,7 @@ app.post('/api/messages/forward', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/messages/delete', async (req, res) => {
     try {
         const { msgId, userId } = req.body;
@@ -249,10 +289,12 @@ app.get('/api/unread/:userId', async (req, res) => {
     res.json({ rooms, total });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.get('/api/prefs/:userId', async (req, res) => {
   try { let p = await UserPrefs.findOne({ userId: req.params.userId }); if (!p) p = await UserPrefs.create({ userId: req.params.userId }); res.json(p); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.get('/api/starred/:userId', async (req, res) => {
   try {
     const uid = req.params.userId;
@@ -262,6 +304,7 @@ app.get('/api/starred/:userId', async (req, res) => {
     res.json(msgs);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/unblock', async (req, res) => {
   try {
     const { userId, targetId } = req.body;
@@ -269,12 +312,14 @@ app.post('/api/unblock', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/prefs/:userId', async (req, res) => {
   try { const { field, value } = req.body; const upd = {}; upd[field] = value;
     await UserPrefs.findOneAndUpdate({ userId: req.params.userId }, { $set: upd }, { upsert: true });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 // ---------- AUTH ROUTES ----------
 app.post('/api/signup', async (req, res) => {
     try {
@@ -312,6 +357,7 @@ app.post('/api/google-login', async (req, res) => {
     res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier, avatarUrl: user.avatarUrl } });
   } catch (err) { console.error('Google login error:', err); res.status(401).json({ error: 'Invalid Google token' }); }
 });
+
 app.post('/api/login', async (req, res) => {
     try {
         const { identifier, password } = req.body;
@@ -327,11 +373,22 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// List all users (for contacts) — excludes passwords
 app.get('/api/blocked/:userId', async (req, res) => {
   try { const p = await UserPrefs.findOne({ userId: req.params.userId }); res.json(p ? p.blocked : []); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ---------- FCM TOKEN ----------
+app.post('/api/fcm-token', async (req, res) => {
+    try {
+        const { userId, token } = req.body;
+        if (!userId || !token) return res.status(400).json({ error: 'Missing fields' });
+        await User.findByIdAndUpdate(userId, { fcmToken: token });
+        console.log('✅ FCM token saved for user', userId);
+        res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/users', async (req, res) => {
     try {
         const list = await User.find({}, { password: 0 }).sort({ name: 1 });
@@ -340,6 +397,7 @@ app.get('/api/users', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 // ---------- AVATAR UPLOAD ----------
 app.post('/api/avatar', upload.single('avatar'), async (req, res) => {
     try {
@@ -353,6 +411,7 @@ app.post('/api/avatar', upload.single('avatar'), async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 // ---------- CALL ROUTES ----------
 app.post('/api/calls', async (req, res) => {
     try {
@@ -376,6 +435,7 @@ app.get('/api/calls/:userId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 app.post('/api/groups', async (req, res) => {
   try {
     const { name, members, createdBy } = req.body;
@@ -384,14 +444,17 @@ app.post('/api/groups', async (req, res) => {
     res.json(g);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.get('/api/groups/:userId', async (req, res) => {
   try { const list = await Group.find({ members: req.params.userId }); res.json(list); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.get('/api/groups/info/:groupId', async (req, res) => {
   try { const g = await Group.findOne({ groupId: req.params.groupId }); res.json(g || {}); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/groups/addMember', async (req, res) => {
   try {
     const { groupId, userId } = req.body;
@@ -400,6 +463,7 @@ app.post('/api/groups/addMember', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/groups/removeMember', async (req, res) => {
   try {
     const { groupId, userId } = req.body;
@@ -408,6 +472,7 @@ app.post('/api/groups/removeMember', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 // ---------- QR LOGIN ----------
 const qrSessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true },
@@ -431,7 +496,7 @@ app.post('/api/qr/scan', async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.status(400).json({ error: 'User not found' });
         const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
-                io.to(sessionId).emit('qr-login-success', {
+        io.to(sessionId).emit('qr-login-success', {
             id: user._id, name: user.name, identifier: user.identifier,
             avatarUrl: user.avatarUrl, token
         });
@@ -441,7 +506,7 @@ app.post('/api/qr/scan', async (req, res) => {
 });
 
 // ---------- SOCKET.IO ----------
-const onlineUsers = new Map(); // socketId -> userId
+const onlineUsers = new Map();
 
 function broadcastOnline() {
     const uniqueUserIds = [...new Set(onlineUsers.values())];
@@ -449,9 +514,9 @@ function broadcastOnline() {
 }
 
 io.on('connection', (socket) => {
-    console.log('✅ User connected:', socket.id);
+    console.log('User connected:', socket.id);
 
-        socket.on('userOnline', (userId) => {
+    socket.on('userOnline', (userId) => {
         onlineUsers.set(socket.id, userId);
         broadcastOnline();
     });
@@ -465,16 +530,18 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         socket.to(roomId).emit('userJoined', socket.id);
     });
+
     socket.on('offer', (d) => socket.to(d.roomId).emit('offer', d));
     socket.on('callType', (d) => socket.to(d.roomId).emit('callType', d));
     socket.on('answer', (d) => socket.to(d.roomId).emit('answer', d));
     socket.on('iceCandidate', (d) => socket.to(d.roomId).emit('iceCandidate', d));
     socket.on('endCall', (d) => socket.to(d.roomId).emit('endCall'));
+
     socket.on('typing', (data) => {
         socket.to(data.roomId).emit('typing', { from: data.senderName });
     });
 
-           socket.on('sendMessage', async (data) => {
+       socket.on('sendMessage', async (data) => {
         try {
             const msg = await Message.create({
                 roomId:    data.roomId,
@@ -483,9 +550,33 @@ io.on('connection', (socket) => {
                 text:      data.text || '',
                 mediaUrl:  data.mediaUrl || null,
                 mediaType: data.mediaType || null,
-                replyTo: data.replyTo || null, expiresAt: data.expiresAt || null
+                replyTo:   data.replyTo || null,
+                expiresAt: data.expiresAt || null
             });
             io.to(data.roomId).emit('newMessage', msg);
+
+            // ---- PUSH if recipient(s) offline ----
+            try {
+                // roomId format: "userA_userB" — split to find recipient
+                const parts = String(data.roomId).split('_');
+                const recipientId = parts.find(p => p !== data.sender);
+                if (recipientId){
+                    const stillOnline = [...onlineUsers.values()].includes(recipientId);
+                    if (!stillOnline){
+                        const recipient = await User.findById(recipientId).select('fcmToken name');
+                        if (recipient && recipient.fcmToken){
+                            await getMessaging().send({
+    token: recipient.fcmToken,
+    notification: {
+        title: data.senderName || 'New message',
+        body:  data.text || (data.mediaType ? '(' + data.mediaType + ')' : 'New message')
+    },
+    data: { roomId: String(data.roomId), senderId: String(data.sender) }
+});
+                        }
+                    }
+                }
+            } catch (pushErr){ console.warn('FCM send failed:', pushErr.message); }
         } catch (err) {
             console.error('Message save error:', err);
         }
@@ -493,11 +584,11 @@ io.on('connection', (socket) => {
 
     socket.on('joinChat', (roomId) => {
         socket.join(roomId);
-        console.log(`📥 ${socket.id} joined chat ${roomId}`);
+        console.log(`${socket.id} joined chat ${roomId}`);
     });
 
     socket.on('disconnect', async () => {
-        console.log('❌ User disconnected:', socket.id);
+        console.log('User disconnected:', socket.id);
         const userId = onlineUsers.get(socket.id);
         if (userId) {
             onlineUsers.delete(socket.id);
@@ -511,4 +602,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
