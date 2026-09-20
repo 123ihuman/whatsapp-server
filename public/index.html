@@ -482,6 +482,46 @@
     70%  { opacity: 1;   transform: translateY(-55vh)  scale(1.1) rotate(8deg);  }
     100% { opacity: 0;   transform: translateY(-85vh)  scale(0.9) rotate(20deg); }
 }
+/* ================= MESSAGE ACTION SHEET ================= */
+.msg-actions-sheet {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 7000;
+  display: none;
+  align-items: flex-end;
+}
+.msg-actions-sheet.active { display: flex; }
+.msg-actions-inner {
+  width: 100%; max-width: 420px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 12px 0 20px;
+  animation: slideUp .2s ease-out;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+.msg-actions-quote {
+  padding: 10px 20px 14px;
+  border-bottom: 1px solid #f0f2f5;
+  color: #667781;
+  font-size: 13px;
+  max-height: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msg-actions-quote b { color: #00a884; display: block; margin-bottom: 4px; }
+.msg-actions-list { padding: 6px 0; }
+.msg-action {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px; cursor: pointer;
+  font-size: 15px; color: #111b21;
+}
+.msg-action:active { background: #f5f6f6; }
+.msg-action i { width: 22px; text-align: center; color: #54656f; font-size: 18px; }
+.msg-action.danger { color: #e74c3c; }
+.msg-action.danger i { color: #e74c3c; }
+
 /* --- CAMERA OVERLAY --- */
 .camera-overlay {
     position: fixed; inset: 0; background: #000; z-index: 20000;
@@ -902,13 +942,26 @@
 <div class="group-info-screen" id="groupInfoScreen">
 <div class="select-header"><i class="fas fa-arrow-left" onclick="closeGroupInfo()"></i><div>Group info</div></div>
 <div style="text-align:center;padding:25px;">
-<div class="avatar" id="giAvatar" style="width:130px;height:130px;margin:0 auto 15px;font-size:50px;background:#00a884;">G</div>
+<div class="avatar" id="giAvatar" style="width:130px;height:130px;margin:0 auto 15px;font-size:50px;background:#00a884;overflow:hidden;">G</div>
 <div id="giName" style="font-size:24px;font-weight:500;color:#111b21;"></div>
 <div id="giCount" style="color:#667781;font-size:14px;margin-top:6px;"></div>
 </div>
+<div class="settings-list" style="margin-bottom:12px;">
+<div class="settings-row" id="giChangeIconBtn" onclick="changeGroupIcon()" style="display:none;">
+<div class="settings-icon"><i class="fas fa-image"></i></div>
+<div class="settings-row-text">Change group icon</div>
+</div>
+<div class="settings-row" id="giRenameBtn" onclick="renameGroup()" style="display:none;">
+<div class="settings-icon"><i class="fas fa-pen"></i></div>
+<div class="settings-row-text">Change group name</div>
+</div>
+</div>
 <div class="settings-section-title">Members</div>
 <div id="giMembersList"></div>
-<button class="settings-cta" onclick="openAddMemberPicker()">Add member</button>
+<div style="padding:16px;">
+<button class="settings-cta" id="giAddMemberBtn" onclick="openAddMemberPicker()" style="display:none;margin:8px auto;">Add member</button>
+<button class="settings-cta" id="giExitBtn" onclick="exitGroup()" style="display:none;margin:8px auto;background:#e74c3c;">Exit group</button>
+</div>
 </div>
 
 <div class="disappearing-picker" id="disappearingPicker">
@@ -1519,6 +1572,14 @@
     </div>
     <div id="qr-reader" style="flex-grow:1;"></div>
 </div>
+<!-- ================= MESSAGE ACTION SHEET ================= -->
+<div class="msg-actions-sheet" id="msgActionsSheet" onclick="if(event.target===this)closeMsgActions()">
+  <div class="msg-actions-inner">
+    <div class="msg-actions-quote" id="msgActionsQuote"></div>
+    <div class="msg-actions-list" id="msgActionsList"></div>
+  </div>
+</div>
+
 <div class="attach-sheet" id="attachSheet" onclick="if(event.target===this)closeAttachSheet()">
 <div class="attach-sheet-inner">
 <div class="attach-handle"></div>
@@ -1592,6 +1653,46 @@
     </div>
 </div>
 <script>
+/* === Auto-retry fetch on cold start 503 + visible "Connecting…" toast === */
+window.showConnecting = function () {
+  let t = document.getElementById('_coldToast');
+  if (!t){
+    t = document.createElement('div');
+    t.id = '_coldToast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);' +
+      'background:#111;color:#fff;padding:10px 18px;border-radius:20px;' +
+      'font:13px sans-serif;z-index:99999;display:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = 'Connecting to server…';
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(function(){ t.style.display = 'none'; }, 4000);
+};
+
+(function () {
+  const _fetch = window.fetch.bind(window);
+  window.fetch = async function (url, opts) {
+    for (let i = 0; i < 6; i++) {
+      const r = await _fetch(url, opts);
+      if (r.status !== 503) {
+        const t = document.getElementById('_coldToast');
+        if (t) t.style.display = 'none';
+        return r;
+      }
+      if (i === 0 && window.showConnecting) window.showConnecting();
+      await new Promise(function(res){ setTimeout(res, 3000 + i * 1000); });
+    }
+    return new Response(JSON.stringify({ error: 'Server not ready' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+})();
+/* === end patch === */
+
+// ...or "use strict"; or /* app code */ etc — your original first line continues here
+const API = location.origin;  // (example — your first line may differ)
         // --- SOCKET CONNECTION (must be first!) ---
     const socket = io();
 let onlineUserIds = [];
@@ -1702,7 +1803,30 @@ function openNewGroupScreen(){document.getElementById('newGroupScreen').classLis
 function closeNewGroupScreen(){document.getElementById('newGroupScreen').classList.remove('active');selectedGroupMembers=[];document.getElementById('groupName').value='';}
 let selectedGroupMembers=[];
 async function loadGroupContactPicker(){const r=await fetch('/api/users');const u=await r.json();const c=document.getElementById('groupContactList');c.innerHTML='';u.filter(x=>x._id!==getMyId()).forEach(x=>{const d=document.createElement('div');d.className='contact-list-item';d.dataset.uid=x._id;d.innerHTML=`<div class="avatar" style="background:#00a884;">${x.avatarUrl?`<img src="${x.avatarUrl}">`:x.name.charAt(0).toUpperCase()}</div><div><div class="name">${x.name}</div><div class="status">${x.identifier}</div></div>`;d.onclick=()=>{d.classList.toggle('selected');if(d.classList.contains('selected'))selectedGroupMembers.push({id:x._id,name:x.name});else selectedGroupMembers=selectedGroupMembers.filter(m=>m.id!==x._id);};c.appendChild(d);});}
-async function createGroupFromScreen(){const name=document.getElementById('groupName').value.trim();if(!name)return alert('Enter group name');if(selectedGroupMembers.length<1)return alert('Pick at least 1 member');const gid='group_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);closeNewGroupScreen();openChatWindow(name,gid);}
+async function createGroupFromScreen() {
+  const name = document.getElementById('groupName').value.trim();
+  if (!name) return alert('Enter group name');
+  if (selectedGroupMembers.length < 1) return alert('Pick at least 1 member');
+  try {
+    const res = await fetch('/api/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        members: selectedGroupMembers.map(m => m.id),
+        createdBy: getMyId()
+      })
+    });
+    const g = await res.json();
+    if (!res.ok) return alert('Failed: ' + (g.error || 'unknown'));
+    selectedGroupMembers = [];
+    document.getElementById('groupName').value = '';
+    closeNewGroupScreen();
+    openChatWindow(g.name, g.groupId);
+  } catch (e) {
+    alert('Failed to create group: ' + e.message);
+  }
+}
     
     function playSendSound() {
         initAudio();
@@ -1817,27 +1941,115 @@ async function openNewContactPrompt() {
 async function loadSelectContacts() {
     const list = document.getElementById('selectContactList');
     list.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">Loading…</div>';
+
     try {
         const res = await fetch('/api/users');
         const users = await res.json();
-        list.innerHTML = '';
         const others = users.filter(u => u._id !== getMyId());
-        if (others.length === 0) {
-            list.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">No other users yet</div>';
-            return;
+
+        let phoneContacts = [];
+        try { phoneContacts = await getPhoneContacts(); }
+        catch(e) { console.warn('Phone contacts unavailable:', e); }
+
+        list.innerHTML = '';
+
+        // --- Section 1: registered users (Contacts on WhatsApp) ---
+        if (others.length > 0) {
+            const header = document.createElement('div');
+            header.className = 'contact-header';
+            header.textContent = 'Contacts on WhatsApp';
+            list.appendChild(header);
+
+            others.forEach(u => {
+                const el = document.createElement('div');
+                el.className = 'contact-list-item';
+                el.onclick = () => { closeSelectContact(); openChatWindow(u.name, u._id); };
+                const av = u.avatarUrl
+                    ? '<img src="' + u.avatarUrl + '">'
+                    : u.name.charAt(0).toUpperCase();
+                el.innerHTML =
+                    '<div class="avatar" style="background:#00a884;">' + av + '</div>' +
+                    '<div><div class="name">' + u.name + '</div>' +
+                    '<div class="status">' + u.identifier + '</div></div>';
+                list.appendChild(el);
+            });
         }
-        others.forEach(u => {
-            const el = document.createElement('div');
-            el.className = 'contact-list-item';
-            el.onclick = () => { closeSelectContact(); openChatWindow(u.name, u._id); };
-            el.innerHTML = `
-                <div class="avatar" style="background:#00a884;">${u.name.charAt(0).toUpperCase()}</div>
-                <div><div class="name">${u.name}</div><div class="status">${u.identifier}</div></div>`;
-            list.appendChild(el);
-        });
+
+        // --- Section 2: phone contacts not registered ---
+        if (phoneContacts.length > 0) {
+            const registeredIds = new Set(others.map(u => (u.identifier || '').toLowerCase()));
+            const unregistered = phoneContacts.filter(c => {
+                const phones = c.phones || [];
+                const emails = c.emails || [];
+                return !phones.some(p => registeredIds.has(p.toLowerCase()))
+                    && !emails.some(e => registeredIds.has(e.toLowerCase()));
+            });
+
+            if (unregistered.length > 0) {
+                const header = document.createElement('div');
+                header.className = 'contact-header';
+                header.textContent = 'Invite to WhatsApp (' + unregistered.length + ')';
+                list.appendChild(header);
+
+                unregistered.slice(0, 100).forEach(c => {
+                    const display = (c.phones && c.phones[0]) || (c.emails && c.emails[0]) || '';
+                    const el = document.createElement('div');
+                    el.className = 'contact-list-item';
+                    const safe = String(display).replace(/'/g, "\\'");
+                    el.innerHTML =
+                        '<div class="avatar" style="background:#8696a0;">' +
+                            (c.name ? c.name.charAt(0).toUpperCase() : '?') +
+                        '</div>' +
+                        '<div style="flex-grow:1;"><div class="name">' + (c.name || 'Unknown') + '</div>' +
+                        '<div class="status">' + display + '</div></div>' +
+                        '<button class="btn-green" style="padding:6px 14px;font-size:13px;" onclick="event.stopPropagation();inviteContact(\'' + safe + '\')">Invite</button>';
+                    list.appendChild(el);
+                });
+            }
+        }
+
+        if (list.children.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">No contacts yet</div>';
+        }
     } catch (err) {
         list.innerHTML = '<div style="color:#e74c3c;padding:20px;">Failed to load contacts</div>';
     }
+}
+
+async function getPhoneContacts() {
+    if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.Contacts) {
+        return [];   // web browser / plugin missing → return empty
+    }
+    const Contacts = window.Capacitor.Plugins.Contacts;
+
+    const perm = await Contacts.requestPermissions();
+    if (perm.contacts !== 'granted') {
+        console.warn('Contacts permission denied');
+        return [];
+    }
+
+    const result = await Contacts.getContacts({});
+    return (result.contacts || []).map(c => ({
+        name: c.name && c.name.display
+            ? c.name.display
+            : (c.name && c.name.given ? (c.name.given + ' ' + (c.name.family || '')).trim() : 'Unknown'),
+        phones: (c.phoneNumbers || [])
+            .map(p => (p.number || '').replace(/[\s\-()]/g, ''))
+            .filter(Boolean),
+        emails: (c.emails || [])
+            .map(e => (e.address || '').toLowerCase())
+            .filter(Boolean)
+    }));
+}
+
+function inviteContact(target) {
+    if (!target) return;
+    const msg = encodeURIComponent('Hey! Join me on this chat app: https://whatsapp-server-e668.onrender.com');
+    const isPhone = /^\+?\d/.test(target);
+    const url = isPhone
+        ? 'sms:' + target + '?body=' + msg
+        : 'mailto:' + target + '?subject=Join&body=' + msg;
+    window.open(url, '_blank');
 }
     function closeSelectContact() {
         playClickSound();
@@ -1969,16 +2181,26 @@ const edt = m.edited ? ' <span class="msg-edited">(edited)</span>' : '';
 div.innerHTML = fwd + replyHtml + bodyHtml + '<span class="msg-time">' + time + edt + ' ' + tick + '</span>';
 renderReactions(div, m.reactions);
 
-    // Right-click (desktop) or long-press (mobile) for actions
-        div.addEventListener('contextmenu', (e) => {
+    /    // Long-press (mobile) + right-click (desktop) → WhatsApp-style menu
+    let pressTimer = null, pressX = 0, pressY = 0;
+    div.addEventListener('touchstart', (e) => {
+        if (m.deleted) return;
+        pressX = e.touches[0].clientX;
+        pressY = e.touches[0].clientY;
+        pressTimer = setTimeout(() => { openMsgActions(m, div); pressTimer = null; }, 450);
+    }, { passive: true });
+    div.addEventListener('touchmove', (e) => {
+        if (!pressTimer) return;
+        const dx = e.touches[0].clientX - pressX;
+        const dy = e.touches[0].clientY - pressY;
+        if (Math.hypot(dx, dy) > 12) { clearTimeout(pressTimer); pressTimer = null; }
+    }, { passive: true });
+    div.addEventListener('touchend',  () => { clearTimeout(pressTimer); pressTimer = null; });
+    div.addEventListener('touchcancel',() => { clearTimeout(pressTimer); pressTimer = null; });
+    div.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (m.deleted) return;
-        const action = prompt('Type "reply", "react", "delete", "copy" or "forward":', 'reply');
-        if (action === 'reply') replyToMessage(m._id, isMine ? 'You' : m.senderName, m.text || (m.mediaType || 'media'));
-        else if (action === 'react') openReactionPicker(m._id);
-        else if (action === 'delete') { if (!isMine) return alert('You can only delete your own messages.'); deleteMessage(m._id); }
-        else if (action === 'copy') { navigator.clipboard.writeText(m.text || ''); alert('Copied'); }
-        else if (action === 'forward') forwardMessage(m);
+        openMsgActions(m, div);
     });
 
     // Save message data on the element for later
@@ -2020,6 +2242,108 @@ function renderReactions(el, reactions) {
   const html = Object.entries(counts).map(([e, c]) => '<span>' + e + (c > 1 ? c : '') + '</span>').join('');
   const d = document.createElement('div'); d.className = 'msg-reactions'; d.innerHTML = html;
   el.appendChild(d);
+}
+/* ================= MESSAGE ACTION SHEET ================= */
+let activeMsgActions = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openMsgActions(m, el) {
+  if (!m || m.deleted) return;
+  activeMsgActions = { m, el };
+  const isMine = m.sender === getMyId();
+  const preview = m.text || (m.mediaType ? '(' + m.mediaType + ')' : '(message)');
+
+  const quote = document.getElementById('msgActionsQuote');
+  quote.innerHTML = '<b>' + escapeHtml(isMine ? 'You' : (m.senderName || 'Them')) +
+                    '</b>' + escapeHtml(preview);
+
+  const list = document.getElementById('msgActionsList');
+  const items = [];
+
+  items.push({ icon:'fa-reply', label:'Reply', act: () => {
+    replyToMessage(m._id, isMine ? 'You' : m.senderName, preview);
+  }});
+
+  const isStarred = (prefs.starredMsgs || []).includes(String(m._id));
+  items.push({ icon:'fa-star', label: isStarred ? 'Unstar message' : 'Star message', act: () => {
+    toggleStarMessage(m._id);
+  }});
+
+  items.push({ icon:'fa-thumbtack', label:'Pin message', act: () => {
+    pinMessage(m);
+  }});
+
+  if (m.text) {
+    items.push({ icon:'fa-copy', label:'Copy text', act: () => {
+      navigator.clipboard.writeText(m.text).then(() => alert('Copied'));
+    }});
+  }
+
+  items.push({ icon:'fa-share', label:'Forward', act: () => {
+    forwardMessage(m);
+  }});
+
+  items.push({ icon:'fa-face-smile', label:'React', act: () => {
+    openReactionPicker(m._id);
+  }});
+
+  if (isMine) {
+    items.push({ icon:'fa-trash', label:'Delete for everyone', danger: true, act: () => {
+      deleteMessage(m._id);
+    }});
+  }
+
+  list.innerHTML = items.map((it, i) =>
+    '<div class="msg-action' + (it.danger ? ' danger' : '') + '" data-idx="' + i + '">' +
+    '<i class="fas ' + it.icon + '"></i><span>' + it.label + '</span></div>'
+  ).join('');
+
+  list.querySelectorAll('.msg-action').forEach(el => {
+    el.onclick = () => {
+      const idx = +el.dataset.idx;
+      closeMsgActions();
+      setTimeout(() => items[idx].act(), 20);
+    };
+  });
+
+  document.getElementById('msgActionsSheet').classList.add('active');
+}
+
+function closeMsgActions() {
+  document.getElementById('msgActionsSheet').classList.remove('active');
+  activeMsgActions = null;
+}
+
+// Star individual message (local, no server change needed)
+function toggleStarMessage(msgId) {
+  if (!prefs.starredMsgs) prefs.starredMsgs = [];
+  const s = String(msgId);
+  const i = prefs.starredMsgs.indexOf(s);
+  if (i >= 0) { prefs.starredMsgs.splice(i, 1); alert('Unstarred'); }
+  else        { prefs.starredMsgs.push(s); alert('Starred'); }
+  try { localStorage.setItem('wa_starred_msgs', JSON.stringify(prefs.starredMsgs)); } catch(e){}
+}
+
+// Pin message to top of chat (visual banner)
+function pinMessage(m) {
+  const area = document.getElementById('messagesArea');
+  let bar = document.getElementById('pinnedMsgBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pinnedMsgBar';
+    bar.style.cssText = 'position:sticky;top:0;background:#fff;border-left:4px solid #00a884;padding:10px 14px;font-size:13px;color:#111b21;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.08);display:flex;justify-content:space-between;align-items:center;';
+    bar.innerHTML = '<div id="pinnedMsgContent"></div>' +
+      '<i class="fas fa-times" style="cursor:pointer;color:#8696a0;" onclick="document.getElementById(\'pinnedMsgBar\').remove()"></i>';
+    area.insertAdjacentElement('afterbegin', bar);
+  }
+  document.getElementById('pinnedMsgContent').innerHTML =
+    '<b style="color:#00a884;">Pinned</b><br>' +
+    escapeHtml(m.text || '(' + (m.mediaType || 'media') + ')');
+  alert('Pinned');
 }
 function editLastMessage() {
   if (!activeRoomId) return;
@@ -2295,6 +2619,11 @@ function afterLogin() {
     loadStatuses();
     requestNotificationPermission();
     setInterval(refreshUnread, 15000);
+
+    // Re-register push now that we know the user id
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
+        try { window.Capacitor.Plugins.PushNotifications.register(); } catch(e) {}
+    }
 }
 
 socket.on('onlineUsers', (ids) => {
@@ -3053,7 +3382,11 @@ function closeSettings() {
     document.getElementById('settingsScreen').classList.remove('active');
 }
 
-let prefs = { pinned: [], archived: [], starred: [], blocked: [] };
+let prefs = { pinned: [], archived: [], starred: [], blocked: [], starredMsgs: [] };
+try {
+  const sm = localStorage.getItem('wa_starred_msgs');
+  if (sm) prefs.starredMsgs = JSON.parse(sm) || [];
+} catch(e) {}
 async function loadPrefs() {
   try { const r = await fetch('/api/prefs/' + getMyId()); prefs = await r.json(); } catch(e) {}
 }
@@ -3098,6 +3431,8 @@ function updateChatMenuItemLabels() {
 }
 let activeDisappearingSecs = 0;
 let activeGroupId = null;
+let activeGroupData = null;
+
 async function openGroupInfo() {
   if (!activeRoomId || !activeRoomId.startsWith('group_')) return;
   activeGroupId = activeRoomId;
@@ -3105,24 +3440,134 @@ async function openGroupInfo() {
   try {
     const r = await fetch('/api/groups/info/' + activeGroupId);
     const g = await r.json();
+    activeGroupData = g;
+    const isAdmin = (g.admins || []).includes(getMyId());
+    const isMember = (g.members || []).includes(getMyId());
+
     document.getElementById('giName').innerText = g.name || activeChatName;
     document.getElementById('giCount').innerText = (g.members || []).length + ' members';
+
+    const av = document.getElementById('giAvatar');
+    if (g.icon) av.innerHTML = '<img src="' + g.icon + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+    else { av.innerHTML = ''; av.innerText = 'G'; }
+
     const ml = document.getElementById('giMembersList');
     ml.innerHTML = '';
     const ur = await fetch('/api/users');
     const users = await ur.json();
     (g.members || []).forEach(mid => {
       const u = users.find(x => x._id === mid);
-      if (!u) return;
+      const name = u ? u.name : 'User';
+      const identifier = u ? u.identifier : '';
+      const isTheAdmin = (g.admins || []).includes(mid);
+      const isMe = mid === getMyId();
       const el = document.createElement('div');
       el.className = 'contact-list-item';
-      el.innerHTML = '<div class="avatar" style="background:#00a884;">' + (u.avatarUrl ? '<img src="' + u.avatarUrl + '">' : u.name.charAt(0).toUpperCase()) + '</div><div><div class="name">' + u.name + '</div><div class="status">' + u.identifier + '</div></div>';
+      el.innerHTML =
+        '<div class="avatar" style="background:#00a884;">' +
+          (u && u.avatarUrl ? '<img src="' + u.avatarUrl + '">' : name.charAt(0).toUpperCase()) +
+        '</div>' +
+        '<div style="flex-grow:1;"><div class="name">' + name + (isMe ? ' (You)' : '') +
+          (isTheAdmin ? ' <span style="background:#e7fce3;color:#008069;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Admin</span>' : '') +
+        '</div><div class="status">' + identifier + '</div></div>' +
+        (isAdmin && !isMe ? '<button class="btn-green" style="padding:6px 12px;font-size:13px;background:#e74c3c;" onclick="removeGroupMember(\'' + mid + '\')">Remove</button>' : '');
       ml.appendChild(el);
     });
-  } catch (e) {}
+
+    const addBtn = document.getElementById('giAddMemberBtn');
+    const renameBtn = document.getElementById('giRenameBtn');
+    const iconBtn = document.getElementById('giChangeIconBtn');
+    const exitBtn = document.getElementById('giExitBtn');
+    if (addBtn) addBtn.style.display = isAdmin ? 'block' : 'none';
+    if (renameBtn) renameBtn.style.display = isAdmin ? 'block' : 'none';
+    if (iconBtn) iconBtn.style.display = isAdmin ? 'block' : 'none';
+    if (exitBtn) exitBtn.style.display = isMember ? 'block' : 'none';
+  } catch (e) { console.warn('openGroupInfo failed', e); }
 }
+
 function closeGroupInfo() { document.getElementById('groupInfoScreen').classList.remove('active'); }
+
+async function removeGroupMember(userId) {
+  if (!confirm('Remove this member from the group?')) return;
+  const r = await fetch('/api/groups/removeMember', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId: activeGroupId, userId, requesterId: getMyId() })
+  });
+  const j = await r.json();
+  if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
+  openGroupInfo();
+}
+
+async function exitGroup() {
+  if (!confirm('Exit this group?')) return;
+  await fetch('/api/groups/leave', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId: activeGroupId, userId: getMyId() })
+  });
+  closeGroupInfo();
+  closeChatWindow();
+}
+
+async function renameGroup() {
+  const current = activeGroupData ? activeGroupData.name : activeChatName;
+  const next = prompt('Group name:', current);
+  if (!next || !next.trim() || next === current) return;
+  const r = await fetch('/api/groups/rename', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId: activeGroupId, name: next.trim(), requesterId: getMyId() })
+  });
+  const j = await r.json();
+  if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
+  activeChatName = next.trim();
+  document.getElementById('chatName').innerText = next.trim();
+  openGroupInfo();
+}
+
+function changeGroupIcon() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('media', file);
+    const r = await fetch('/api/message-media', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!d.url) return alert('Upload failed');
+    await fetch('/api/groups/setIcon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId: activeGroupId, iconUrl: d.url, requesterId: getMyId() })
+    });
+    openGroupInfo();
+  };
+  input.click();
+}
+
 async function openAddMemberPicker() {
+  if (!activeGroupId) return;
+  const ur = await fetch('/api/users');
+  const users = await ur.json();
+  const currentMembers = (activeGroupData && activeGroupData.members) || [];
+  const others = users.filter(u => u._id !== getMyId() && !currentMembers.includes(u._id));
+  if (others.length === 0) return alert('No one left to add');
+  const names = others.map((u, i) => (i + 1) + '. ' + u.name).join('\n');
+  const pick = prompt('Add which member?\n\n' + names + '\n\nEnter number:');
+  const idx = parseInt(pick) - 1;
+  if (isNaN(idx) || !others[idx]) return;
+  const r = await fetch('/api/groups/addMember', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId: activeGroupId, userId: others[idx]._id, requesterId: getMyId() })
+  });
+  const j = await r.json();
+  if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
+  openGroupInfo();
+}
   if (!activeGroupId) return;
   const ur = await fetch('/api/users');
   const users = await ur.json();
@@ -3626,6 +4071,7 @@ socket.on('messageReacted', (d) => { if (d.roomId !== activeRoomId) return; cons
 socket.on('messageEdited', (d) => { if (d.roomId !== activeRoomId) return; const el = document.querySelector('#messagesArea [data-msg-id="' + d.msgId + '"]'); if (!el) return; const t = el.querySelector('.msg-text'); if (t) t.innerText = d.text; if (!el.querySelector('.msg-edited')) { const timeEl = el.querySelector('.msg-time'); if (timeEl) timeEl.insertAdjacentHTML('afterbegin', '<span class="msg-edited">(edited) </span>'); } });
 document.addEventListener('click', (e) => { if (!e.target.closest('.reaction-picker')) closeReactionPicker(); });
 socket.on('groupUpdated', () => { if (activeRoomId && activeRoomId.startsWith('group_')) openGroupInfo(); });
+socket.on('groupCreated', (d) => { loadContacts(); if (typeof loadSelectContacts === 'function') loadSelectContacts(); });
 socket.on('disappearingUpdated', (d) => { if (d.roomId === activeRoomId) { activeDisappearingSecs = d.seconds; updateDisappearingBadge(); } });
 socket.on('newMessage', (msg) => {
     if (msg.roomId !== activeRoomId) return;
@@ -3766,6 +4212,50 @@ socket.on('messagesRead', (data) => {
         t.classList.add('read');
     });
 });
-</script>
+        // ...your existing code...
+
+        /* ============================================================
+           PUSH NOTIFICATIONS — register device, send token to server
+        ============================================================ */
+        (function(){
+            // Only run inside Capacitor (the APK), not in a plain browser
+            if (!window.Capacitor || !window.Capacitor.Plugins) return;
+            const Push = window.Capacitor.Plugins.PushNotifications;
+            if (!Push) return;
+
+            Push.requestPermissions().then(function(result){
+                if (result.receive === 'granted') Push.register();
+            });
+
+           Push.addListener('registration', function(token){
+    // This app stores the logged-in user as currentUser.id and wa_user in localStorage
+    let uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.id) || null;
+    if (!uid) {
+        try {
+            const raw = localStorage.getItem('wa_user');
+            if (raw) uid = JSON.parse(raw).id;
+        } catch(e) {}
+    }
+    if (!uid) { console.warn('FCM: no user id yet'); return; }
+    fetch('/api/fcm-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: uid, token: token.value })
+    }).then(function(r){ console.log('FCM token sent:', r.ok); })
+      .catch(function(e){ console.warn('FCM token send failed', e); });
+});
+
+            Push.addListener('registrationError', function(err){
+                console.warn('Push registration error', err);
+            });
+
+            // Incoming notification while app is running
+            Push.addListener('pushNotificationReceived', function(n){
+                // Optional: show a toast or in-app banner here
+                console.log('Push received', n);
+            });
+        })();
+
+    </script>
 </body>
 </html>

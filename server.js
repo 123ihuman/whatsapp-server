@@ -99,7 +99,9 @@ const UserPrefs = mongoose.model('UserPrefs', userPrefsSchema);
 const groupSchema = new mongoose.Schema({
     groupId:   { type: String, required: true, unique: true },
     name:      { type: String, required: true },
+    icon:      { type: String, default: null },
     members:   { type: [String], default: [] },
+    admins:    { type: [String], default: [] },
     createdBy: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
 });
@@ -439,8 +441,16 @@ app.get('/api/calls/:userId', async (req, res) => {
 app.post('/api/groups', async (req, res) => {
   try {
     const { name, members, createdBy } = req.body;
+    if (!name || !createdBy) return res.status(400).json({ error: 'Missing fields' });
     const gid = 'group_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    const g = await Group.create({ groupId: gid, name, members: [createdBy, ...members], createdBy });
+    const g = await Group.create({
+      groupId: gid,
+      name,
+      members: [createdBy, ...(members || [])],
+      admins:  [createdBy],
+      createdBy
+    });
+    io.emit('groupCreated', { groupId: gid, name, members: g.members, admins: g.admins });
     res.json(g);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -457,18 +467,63 @@ app.get('/api/groups/info/:groupId', async (req, res) => {
 
 app.post('/api/groups/addMember', async (req, res) => {
   try {
-    const { groupId, userId } = req.body;
+    const { groupId, userId, requesterId } = req.body;
+    const g = await Group.findOne({ groupId });
+    if (!g) return res.status(404).json({ error: 'Group not found' });
+    if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can add members' });
     await Group.updateOne({ groupId }, { $addToSet: { members: userId } });
-    io.to(groupId).emit('groupUpdated', { groupId });
+    io.emit('groupUpdated', { groupId });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/groups/removeMember', async (req, res) => {
   try {
+    const { groupId, userId, requesterId } = req.body;
+    const g = await Group.findOne({ groupId });
+    if (!g) return res.status(404).json({ error: 'Group not found' });
+    if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can remove members' });
+    await Group.updateOne({ groupId }, { $pull: { members: userId, admins: userId } });
+    io.emit('groupUpdated', { groupId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/groups/leave', async (req, res) => {
+  try {
     const { groupId, userId } = req.body;
-    await Group.updateOne({ groupId }, { $pull: { members: userId } });
-    io.to(groupId).emit('groupUpdated', { groupId });
+    const g = await Group.findOne({ groupId });
+    if (!g) return res.status(404).json({ error: 'Group not found' });
+    await Group.updateOne({ groupId }, { $pull: { members: userId, admins: userId } });
+    const updated = await Group.findOne({ groupId });
+    if (updated && updated.members.length > 0 && updated.admins.length === 0) {
+      await Group.updateOne({ groupId }, { $set: { admins: [updated.members[0]] } });
+    }
+    io.emit('groupUpdated', { groupId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/groups/rename', async (req, res) => {
+  try {
+    const { groupId, name, requesterId } = req.body;
+    const g = await Group.findOne({ groupId });
+    if (!g) return res.status(404).json({ error: 'Group not found' });
+    if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can rename' });
+    await Group.updateOne({ groupId }, { $set: { name } });
+    io.emit('groupUpdated', { groupId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/groups/setIcon', async (req, res) => {
+  try {
+    const { groupId, iconUrl, requesterId } = req.body;
+    const g = await Group.findOne({ groupId });
+    if (!g) return res.status(404).json({ error: 'Group not found' });
+    if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can change icon' });
+    await Group.updateOne({ groupId }, { $set: { icon: iconUrl } });
+    io.emit('groupUpdated', { groupId });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
