@@ -19,7 +19,10 @@ const nodemailer = require('nodemailer');
 
 // Gmail SMTP transporter — uses App Password (not your Gmail password)
 const mailer = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    family: 4,                  // ← force IPv4 (Render doesn't support IPv6)
     auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD
