@@ -522,6 +522,77 @@
 .msg-action.danger { color: #e74c3c; }
 .msg-action.danger i { color: #e74c3c; }
 
+/* ================= MEDIA CAPTION SHEET ================= */
+.media-caption-sheet {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 7500;
+  display: none;
+  flex-direction: column;
+}
+.media-caption-sheet.active { display: flex; }
+.media-caption-inner {
+  width: 100%; max-width: 520px;
+  margin: 0 auto;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.media-caption-preview {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 20px;
+}
+.media-caption-preview img,
+.media-caption-preview video {
+  max-width: 100%; max-height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.media-caption-input-row {
+  display: flex; gap: 10px; align-items: center;
+  padding: 12px 16px 20px;
+  background: transparent;
+}
+.media-caption-input-row input {
+  flex-grow: 1;
+  background: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 14px 18px;
+  font-size: 16px;
+  outline: none;
+  color: #111b21;
+}
+.media-caption-send {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: #00a884;
+  color: #fff;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.media-caption-send:active { background: #008069; }
+.media-caption-close {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  left: 20px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 2;
+}
 /* --- CAMERA OVERLAY --- */
 .camera-overlay {
     position: fixed; inset: 0; background: #000; z-index: 20000;
@@ -1580,6 +1651,19 @@
   </div>
 </div>
 
+<!-- ================= MEDIA CAPTION SHEET ================= -->
+<div class="media-caption-sheet" id="mediaCaptionSheet" onclick="if(event.target===this)closeMediaCaption()">
+  <div class="media-caption-inner">
+    <div class="media-caption-preview" id="mediaCaptionPreview"></div>
+    <div class="media-caption-input-row">
+      <input type="text" id="mediaCaptionInput" placeholder="Add a caption…" maxlength="500">
+      <button class="media-caption-send" id="mediaCaptionSendBtn" onclick="confirmSendMedia()">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="attach-sheet" id="attachSheet" onclick="if(event.target===this)closeAttachSheet()">
 <div class="attach-sheet-inner">
 <div class="attach-handle"></div>
@@ -2407,31 +2491,78 @@ async function deleteMessage(msgId) {
         cancelReply();
     }
 // --- SEND IMAGE / VIDEO ---
+// Holds the currently-pending upload
+let pendingMedia = null;
+
 async function sendMediaFile(event) {
     const file = event.target.files[0];
     if (!file || !activeRoomId) return;
-    event.target.value = ''; // reset
+    event.target.value = '';
 
     const mediaType = file.type.startsWith('video') ? 'video' : 'image';
-    const formData = new FormData();
-    formData.append('media', file);
+
+    // Show a "uploading…" placeholder while we upload in the background
+    const input = document.getElementById('mediaCaptionInput');
+    input.placeholder = 'Uploading…';
+    input.disabled = true;
+    document.getElementById('mediaCaptionPreview').innerHTML =
+        '<div style="color:#fff;font-size:15px;">Uploading…</div>';
+    document.getElementById('mediaCaptionSheet').classList.add('active');
 
     try {
+        const formData = new FormData();
+        formData.append('media', file);
         const res = await fetch('/api/message-media', { method: 'POST', body: formData });
         const data = await res.json();
         if (!data.url) throw new Error('Upload failed');
 
-        socket.emit('sendMessage', {
-            roomId: activeRoomId,
-            sender: getMyId(),
-            senderName: getMyName(),
-            text: '',
-            mediaUrl: data.url,
-            mediaType
-        });
+        pendingMedia = {
+            url: data.url,
+            mediaType,
+            localPreviewUrl: URL.createObjectURL(file)
+        };
+
+        const preview = document.getElementById('mediaCaptionPreview');
+        preview.innerHTML = mediaType === 'video'
+            ? '<video src="' + pendingMedia.localPreviewUrl + '" controls></video>'
+            : '<img src="' + pendingMedia.localPreviewUrl + '">';
+
+        input.placeholder = 'Add a caption…';
+        input.disabled = false;
+        input.focus();
     } catch (err) {
         alert('Upload failed: ' + err.message);
+        closeMediaCaption();
     }
+}
+
+function closeMediaCaption() {
+    document.getElementById('mediaCaptionSheet').classList.remove('active');
+    document.getElementById('mediaCaptionPreview').innerHTML = '';
+    document.getElementById('mediaCaptionInput').value = '';
+    document.getElementById('mediaCaptionInput').disabled = false;
+    document.getElementById('mediaCaptionInput').placeholder = 'Add a caption…';
+    if (pendingMedia && pendingMedia.localPreviewUrl) {
+        URL.revokeObjectURL(pendingMedia.localPreviewUrl);
+    }
+    pendingMedia = null;
+}
+
+function confirmSendMedia() {
+    if (!pendingMedia || !activeRoomId) return;
+    const caption = document.getElementById('mediaCaptionInput').value.trim();
+
+    socket.emit('sendMessage', {
+        roomId: activeRoomId,
+        sender: getMyId(),
+        senderName: getMyName(),
+        text: caption,
+        mediaUrl: pendingMedia.url,
+        mediaType: pendingMedia.mediaType
+    });
+
+    playSendSound();
+    closeMediaCaption();
 }
 // --- CAMERA CAPTURE ---
 async function sendCameraPhoto(event) {
@@ -3048,25 +3179,74 @@ let activeCallPeerId = null;
 let activeCallPeerName = null;
 let activeCallType = 'audio';
 
-async function openContactPicker(type = 'audio') {
-    try {
-        const res = await fetch('/api/users');
-        const users = await res.json();
-        const others = users.filter(u => u._id !== getMyId());
-        if (others.length === 0) return alert('No other users yet.');
-        const names = others.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
-        const pick = prompt(`Pick a contact for ${type} call:\n\n${names}\n\nEnter number:`);
-        const idx = parseInt(pick) - 1;
-        if (isNaN(idx) || !others[idx]) return;
-        const chosen = others[idx];
-        activeCallPeerId = chosen._id;
-        activeCallPeerName = chosen.name;
-        activeCallType = type;
-        if (type === 'video') doStartVideo(chosen.name, chosen._id);
-        else doStartVoice(chosen.name, chosen._id);
-    } catch (e) {
-        alert('Failed to load contacts');
+// Real tappable contact picker — no more prompt()
+async function openContactPicker(type) {
+  type = type || 'audio';
+  try {
+    const res = await fetch('/api/users');
+    const users = await res.json();
+    const others = users.filter(u => u._id !== getMyId());
+
+    // Build a fresh modal every time
+    let sheet = document.getElementById('_callPickerSheet');
+    if (sheet) sheet.remove();
+    sheet = document.createElement('div');
+    sheet.id = '_callPickerSheet';
+    sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:7500;display:flex;align-items:flex-end;';
+    sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:100%;max-width:420px;margin:0 auto;background:#fff;border-radius:20px 20px 0 0;max-height:78vh;overflow-y:auto;padding:12px 0 20px;';
+
+    inner.innerHTML =
+      '<div style="padding:10px 20px 16px;border-bottom:1px solid #f0f2f5;">' +
+        '<div style="font-size:18px;font-weight:600;color:#111b21;">' +
+          (type === 'video' ? '📹 New video call' : '📞 New voice call') +
+        '</div>' +
+      '</div>';
+
+    if (others.length === 0) {
+      inner.innerHTML += '<div style="padding:30px;text-align:center;color:#8696a0;">No other users yet</div>';
+    } else {
+      others.forEach(u => {
+        const row = document.createElement('div');
+        row.className = 'contact-list-item';
+        row.style.cursor = 'pointer';
+        const av = u.avatarUrl
+          ? '<img src="' + u.avatarUrl + '">'
+          : u.name.charAt(0).toUpperCase();
+        row.innerHTML =
+          '<div class="avatar" style="background:#00a884;">' + av + '</div>' +
+          '<div style="flex-grow:1;"><div class="name">' + u.name + '</div>' +
+          '<div class="status">' + u.identifier + '</div></div>' +
+          '<i class="fas ' + (type === 'video' ? 'fa-video' : 'fa-phone-alt') + '" style="color:#00a884;font-size:22px;padding:8px;"></i>';
+        row.onclick = () => {
+          sheet.remove();
+          activeCallPeerId = u._id;
+          activeCallPeerName = u.name;
+          activeCallType = type;
+          if (type === 'video') doStartVideo(u.name, u._id);
+          else                  doStartVoice(u.name, u._id);
+        };
+        inner.appendChild(row);
+      });
     }
+
+    sheet.appendChild(inner);
+    document.body.appendChild(sheet);
+  } catch (e) {
+    alert('Failed to load contacts');
+  }
+}
+
+// Redial a specific person (used by the Recents list)
+function redial(type, userId, userName) {
+  if (!userId) return;
+  activeCallPeerId = userId;
+  activeCallPeerName = userName || 'Unknown';
+  activeCallType = type;
+  if (type === 'video') doStartVideo(userName, userId);
+  else                  doStartVoice(userName, userId);
 }
 
 function startVoiceCall() {
@@ -3167,7 +3347,7 @@ async function loadCalls() {
             const time = new Date(c.createdAt).toLocaleString();
             const el = document.createElement('div');
             el.className = 'call-item';
-            el.innerHTML = `
+                        el.innerHTML = `
                 <div class="avatar" style="background:#00a884;">${otherName.charAt(0).toUpperCase()}</div>
                 <div class="call-details">
                     <div class="call-name">${otherName}</div>
@@ -3178,10 +3358,10 @@ async function loadCalls() {
                     </div>
                 </div>
                 <div class="call-icon">
-                    <i class="fas fa-phone-alt" style="cursor:pointer;margin-right:10px;" onclick="event.stopPropagation();openContactPicker('audio')" title="Voice call"></i>
-                    <i class="fas fa-video" style="cursor:pointer;color:#00a884;" onclick="event.stopPropagation();openContactPicker('video')" title="Video call"></i>
+                    <i class="fas fa-phone-alt" style="cursor:pointer;margin-right:10px;" onclick="event.stopPropagation();redial('audio','${otherId}','${otherName.replace(/'/g,"\\'")}')" title="Voice call"></i>
+                    <i class="fas fa-video" style="cursor:pointer;color:#00a884;" onclick="event.stopPropagation();redial('video','${otherId}','${otherName.replace(/'/g,"\\'")}')" title="Video call"></i>
                 </div>`;
-            el.onclick = () => openContactPicker('audio');
+            el.onclick = () => redial('audio','${otherId}','${otherName.replace(/'/g,"\\'")}');
             list.appendChild(el);
         });
     } catch (e) {
@@ -3325,28 +3505,40 @@ async function capturePhoto() {
 
     closeCamera();
 
-    // Send to currently open chat, or ask
     if (!activeRoomId) {
         alert('Open a chat first, then tap camera to send the photo there.');
         return;
     }
-    const formData = new FormData();
-    formData.append('media', blob, 'photo.jpg');
+
+    // Reuse the same caption flow
+    const input = document.getElementById('mediaCaptionInput');
+    input.placeholder = 'Uploading…';
+    input.disabled = true;
+    document.getElementById('mediaCaptionPreview').innerHTML =
+        '<div style="color:#fff;font-size:15px;">Uploading…</div>';
+    document.getElementById('mediaCaptionSheet').classList.add('active');
+
     try {
+        const formData = new FormData();
+        formData.append('media', blob, 'photo.jpg');
         const res = await fetch('/api/message-media', { method: 'POST', body: formData });
         const data = await res.json();
         if (!data.url) throw new Error('Upload failed');
-        socket.emit('sendMessage', {
-            roomId: activeRoomId,
-            sender: getMyId(),
-            senderName: getMyName(),
-            text: '',
-            mediaUrl: data.url,
-            mediaType: 'image'
-        });
-        playSendSound();
+
+        pendingMedia = {
+            url: data.url,
+            mediaType: 'image',
+            localPreviewUrl: URL.createObjectURL(blob)
+        };
+
+        document.getElementById('mediaCaptionPreview').innerHTML =
+            '<img src="' + pendingMedia.localPreviewUrl + '">';
+        input.placeholder = 'Add a caption…';
+        input.disabled = false;
+        input.focus();
     } catch (err) {
         alert('Failed to send photo: ' + err.message);
+        closeMediaCaption();
     }
 }
 // --- SETTINGS NAVIGATION ---
