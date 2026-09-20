@@ -593,6 +593,52 @@
   cursor: pointer;
   z-index: 2;
 }
+/* ================= MIC / VOICE RECORDING ================= */
+.mic-btn { background: #00a884 !important; }
+.mic-btn.recording {
+  background: #e74c3c !important;
+  animation: micPulse 1.2s ease-in-out infinite;
+}
+@keyframes micPulse {
+  0%,100% { transform: scale(1);    box-shadow: 0 0 0 0    rgba(231,76,60,0.5); }
+  50%     { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(231,76,60,0); }
+}
+.recording-bar {
+  display: none;
+  position: absolute;
+  top: 0; bottom: 0; left: 0; right: 0;
+  background: #f0f2f5;
+  z-index: 10;
+  align-items: center;
+  padding: 0 16px;
+  gap: 14px;
+  border-radius: 0;
+}
+.recording-bar.active { display: flex; }
+.recording-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #e74c3c; flex-shrink: 0;
+  animation: recBlink 1s ease-in-out infinite;
+}
+@keyframes recBlink {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.2; }
+}
+.recording-time {
+  flex-grow: 1;
+  font-size: 16px;
+  color: #111b21;
+  font-variant-numeric: tabular-nums;
+  font-family: monospace;
+}
+.recording-cancel {
+  color: #e74c3c;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 12px;
+  user-select: none;
+}
 /* --- CAMERA OVERLAY --- */
 .camera-overlay {
     position: fixed; inset: 0; background: #000; z-index: 20000;
@@ -1177,7 +1223,12 @@
             </div>
             <div class="rq-close" onclick="cancelReply()"><i class="fas fa-times"></i></div>
         </div>
-                        <div class="chat-input">
+                               <div class="chat-input" style="position:relative;">
+            <div class="recording-bar" id="recordingBar">
+                <div class="recording-dot"></div>
+                <div class="recording-time" id="recordingTime">0:00</div>
+                <div class="recording-cancel" onclick="cancelVoiceRecording()">Cancel</div>
+            </div>
             <div class="input-wrapper">
                 <i class="far fa-smile" onclick="toggleEmojiPicker(event)" style="cursor:pointer;"></i>
                 <input type="text" id="chatInput" placeholder="Message">
@@ -1185,8 +1236,11 @@
                 <i class="fas fa-paperclip" onclick="openAttachSheet()" title="Attach" style="cursor:pointer;"></i>
                 <input type="file" id="chatFileInput" accept="image/*,video/*" style="display:none" onchange="sendMediaFile(event)">
             </div>
-            <button class="send-btn" id="sendBtn" onclick="sendSimMessage()">
+                        <button class="send-btn" id="sendBtn" onclick="sendSimMessage()" style="display:none;">
                 <i class="fas fa-paper-plane"></i>
+            </button>
+            <button class="send-btn mic-btn" id="micBtn" onclick="toggleVoiceRecording()">
+                <i class="fas fa-microphone" id="micIcon"></i>
             </button>
                         </div>
     </div>
@@ -2601,46 +2655,101 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let recordingStartTime = 0;
+let recordingTimer = null;
+let cancelledRecording = false;
+
 async function toggleVoiceRecording() {
-    if (!activeRoomId) return;
-    if (!isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.onstop = async () => {
-                stream.getTracks().forEach(t => t.stop());
-                const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                const formData = new FormData();
-                formData.append('media', blob, 'voice.webm');
-                try {
-                    const res = await fetch('/api/message-media', { method: 'POST', body: formData });
-                    const data = await res.json();
-                    if (!data.url) throw new Error('Upload failed');
-                    socket.emit('sendMessage', {
-                        roomId: activeRoomId,
-                        sender: getMyId(),
-                        senderName: getMyName(),
-                        text: '',
-                        mediaUrl: data.url,
-                        mediaType: 'audio'
-                    });
-                } catch (err) { alert('Voice upload failed'); }
-                resetMicButton();
-            };
-            mediaRecorder.start();
-            isRecording = true;
-            document.getElementById('micIcon').style.color = '#e74c3c';
-            document.getElementById('micIcon').classList.remove('fa-microphone');
-            document.getElementById('micIcon').classList.add('fa-stop');
-        } catch (err) {
-            alert('Microphone permission denied');
-        }
-    } else {
-        mediaRecorder.stop();
-        isRecording = false;
+    if (!activeRoomId) return alert('Open a chat first');
+    if (isRecording) return stopVoiceRecording(false);
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        cancelledRecording = false;
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            stopRecordingUI();
+            if (cancelledRecording) return;
+
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            if (blob.size < 800) return; // too short
+
+            const formData = new FormData();
+            formData.append('media', blob, 'voice_' + Date.now() + '.webm');
+            try {
+                const res = await fetch('/api/message-media', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!data.url) throw new Error('Upload failed');
+                socket.emit('sendMessage', {
+                    roomId: activeRoomId,
+                    sender: getMyId(),
+                    senderName: getMyName(),
+                    text: '',
+                    mediaUrl: data.url,
+                    mediaType: 'audio'
+                });
+                playSendSound();
+            } catch (err) {
+                alert('Voice upload failed');
+            }
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        startRecordingUI();
+    } catch (err) {
+        alert('Microphone permission denied');
     }
+}
+
+function startRecordingUI() {
+    recordingStartTime = Date.now();
+    const bar   = document.getElementById('recordingBar');
+    const timer = document.getElementById('recordingTime');
+    const btn   = document.getElementById('micBtn');
+    if (bar)   bar.classList.add('active');
+    if (btn)   btn.classList.add('recording');
+    if (timer) timer.textContent = '0:00';
+    updateRecordingTime();
+    recordingTimer = setInterval(updateRecordingTime, 200);
+}
+
+function updateRecordingTime() {
+    const s   = Math.floor((Date.now() - recordingStartTime) / 1000);
+    const m   = Math.floor(s / 60);
+    const sec = s % 60;
+    const el  = document.getElementById('recordingTime');
+    if (el) el.textContent = m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+function stopRecordingUI() {
+    isRecording = false;
+    const bar = document.getElementById('recordingBar');
+    const btn = document.getElementById('micBtn');
+    if (bar) bar.classList.remove('active');
+    if (btn) btn.classList.remove('recording');
+    if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null; }
+}
+
+function stopVoiceRecording(cancel) {
+    if (!mediaRecorder) return;
+    cancelledRecording = !!cancel;
+    try { mediaRecorder.stop(); } catch(e) {}
+    mediaRecorder = null;
+}
+
+function cancelVoiceRecording() {
+    stopVoiceRecording(true);
 }
 // --- UPI / Google Pay ---
 function openUPI() {
@@ -2664,12 +2773,26 @@ function resetMicButton() {
 
        // --- TYPING + INPUT LISTENER ---
     let typingCooldown = null;
-    document.getElementById('chatInput').addEventListener('input', function () {
-        if (this.value.trim().length > 0 && activeRoomId && !typingCooldown) {
+        document.getElementById('chatInput').addEventListener('input', function () {
+        const hasText = this.value.trim().length > 0;
+        const sendBtn = document.getElementById('sendBtn');
+        const micBtn  = document.getElementById('micBtn');
+        if (hasText) {
+            sendBtn.style.display = 'flex';
+            micBtn.style.display  = 'none';
+        } else {
+            sendBtn.style.display = 'none';
+            micBtn.style.display  = 'flex';
+        }
+        if (hasText && activeRoomId && !typingCooldown) {
             socket.emit('typing', { roomId: activeRoomId, senderName: getMyName() });
             typingCooldown = setTimeout(() => { typingCooldown = null; }, 1500);
         }
     });
+
+    // Ensure mic is visible on first load (empty input)
+    document.getElementById('sendBtn').style.display = 'none';
+    document.getElementById('micBtn').style.display  = 'flex';
 
     document.getElementById('chatInput').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') sendSimMessage();
