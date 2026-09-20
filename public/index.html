@@ -382,6 +382,55 @@
 .auth-error { color: #e74c3c; font-size: 13px; text-align: center; margin-bottom: 10px; min-height: 18px; }
 .msg img, .msg video { border-radius: 8px; max-width: 100%; }
 .msg audio { max-width: 100%; }
+/* ================= UNREAD DIVIDER ================= */
+.unread-divider {
+    clear: both;
+    height: 1px;
+    background: #25d366;
+    margin: 14px -15px;
+    position: relative;
+}
+
+/* ================= JUMP TO BOTTOM ================= */
+.jump-bottom-btn {
+    position: absolute;
+    right: 16px;
+    bottom: 90px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    color: #54656f;
+    border: none;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    z-index: 5;
+    transition: transform .15s, opacity .15s;
+}
+.jump-bottom-btn.show { display: flex; }
+.jump-bottom-btn:active { transform: scale(0.9); }
+.jump-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #25d366;
+    color: #fff;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border: 2px solid #fff;
+}
+
 /* --- REPLY PREVIEW (inside message) --- */
 .reply-quote {
     background: rgba(0,0,0,0.06); border-left: 3px solid #00a884;
@@ -460,6 +509,92 @@
 .reaction-btn:hover { transform: scale(1.15); background: rgba(255,255,255,0.3); }
 .reaction-btn:active { transform: scale(1.3); background: rgba(255,255,255,0.5); }
 
+/* ================= STATUS EMOJI PICKER ================= */
+.reaction-bar {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  gap: 8px;
+  scrollbar-width: none;
+}
+.reaction-bar::-webkit-scrollbar { display: none; }
+.reaction-btn {
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(.3,1.6,.5,1), background 0.2s;
+}
+.reaction-btn:hover { transform: scale(1.2) translateY(-3px); }
+.reaction-btn:active { transform: scale(0.9); }
+.reaction-btn.more {
+  background: rgba(0,168,132,0.35);
+  font-size: 26px;
+  font-weight: 300;
+  color: #fff;
+}
+
+.status-emoji-picker {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10001;
+  display: none;
+  align-items: flex-end;
+}
+.status-emoji-picker.active { display: flex; }
+.status-emoji-inner {
+  width: 100%; max-width: 520px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, #1f2c33 0%, #111b21 100%);
+  border-radius: 22px 22px 0 0;
+  padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
+  animation: pickerUp .28s cubic-bezier(.2,1.4,.4,1);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+@keyframes pickerUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.status-emoji-head {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+  letter-spacing: 0.3px;
+  opacity: 0.9;
+}
+.status-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 12px;
+  justify-items: center;
+}
+.status-emoji-grid span {
+  font-size: 30px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s cubic-bezier(.3,1.6,.5,1), background .15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.status-emoji-grid span:hover {
+  transform: scale(1.25);
+  background: rgba(255,255,255,0.08);
+}
+.status-emoji-grid span:active { transform: scale(1.5); }
+
+/* Floating emoji animation — upgraded */
+.floating-emoji {
+  font-size: 34px;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+  will-change: transform, opacity;
+}
 /* Floating emoji layer */
 .emoji-burst-layer {
     position: absolute;
@@ -477,10 +612,11 @@
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
 }
 @keyframes flyUp {
-    0%   { opacity: 0;   transform: translateY(0)      scale(0.4) rotate(0deg);  }
-    15%  { opacity: 1;   transform: translateY(-40px)  scale(1.2) rotate(-8deg); }
-    70%  { opacity: 1;   transform: translateY(-55vh)  scale(1.1) rotate(8deg);  }
-    100% { opacity: 0;   transform: translateY(-85vh)  scale(0.9) rotate(20deg); }
+    0%   { opacity: 0;   transform: translateY(0)      scale(0.3) rotate(0deg); }
+    12%  { opacity: 1;   transform: translateY(-30px)  scale(1.3) rotate(calc(-8deg + var(--tilt, 0deg))); }
+    55%  { opacity: 1;   transform: translateY(-45vh)  scale(1.15) rotate(var(--tilt, 0deg)); }
+    85%  { opacity: 0.8; transform: translateY(-72vh)  scale(1.0) rotate(calc(12deg + var(--tilt, 0deg))); }
+    100% { opacity: 0;   transform: translateY(-92vh)  scale(0.85) rotate(calc(22deg + var(--tilt, 0deg))); }
 }
 /* ================= MESSAGE ACTION SHEET ================= */
 .msg-actions-sheet {
@@ -638,6 +774,297 @@
   cursor: pointer;
   padding: 8px 12px;
   user-select: none;
+}
+/* ================= VIEW-ONCE ================= */
+.viewonce-toggle {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  right: 20px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 2px solid transparent;
+  cursor: pointer;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: background .2s, border-color .2s;
+}
+.viewonce-toggle .vo-count {
+  position: absolute;
+  top: -3px; right: -3px;
+  background: #00a884;
+  color: #fff;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #000;
+}
+.viewonce-toggle.on {
+  background: #00a884;
+  border-color: #fff;
+}
+.viewonce-toggle.on .vo-count { background: #fff; color: #00a884; }
+
+/* View-once message placeholder */
+.vo-bubble {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.06);
+  cursor: pointer;
+  font-size: 14px;
+  color: #111b21;
+  margin-bottom: 4px;
+}
+.vo-bubble i {
+  font-size: 20px;
+  color: #00a884;
+}
+.vo-bubble .vo-circle {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.vo-bubble .vo-circle::after {
+  content: '1';
+  position: absolute;
+  top: -4px; right: -6px;
+  background: #00a884;
+  color: #fff;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.vo-bubble.opened {
+  background: rgba(0,0,0,0.03);
+  color: #8696a0;
+  cursor: default;
+}
+.vo-bubble.opened i { color: #8696a0; }
+.vo-bubble.opened .vo-circle::after { display: none; }
+
+/* Fullscreen viewer */
+.vo-viewer {
+  position: fixed; inset: 0;
+  background: #000;
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+}
+.vo-viewer.active { display: flex; }
+.vo-viewer-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7), transparent);
+  position: absolute; top: 0; left: 0; right: 0;
+  z-index: 2;
+}
+.vo-viewer-head i {
+  font-size: 22px; cursor: pointer;
+}
+.vo-viewer-head .vo-info { flex-grow: 1; font-size: 14px; }
+.vo-viewer-head .vo-info b { display: block; }
+.vo-viewer-head .vo-info small { color: #b0b0b0; }
+.vo-viewer-body {
+  flex-grow: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 60px 0;
+}
+.vo-viewer-body img,
+.vo-viewer-body video {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+}
+.vo-viewer-foot {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 14px 18px 30px;
+  color: #b0b0b0;
+  font-size: 13px;
+  text-align: center;
+  background: linear-gradient(0deg, rgba(0,0,0,0.7), transparent);
+}
+/* ================= PRIVACY PICKER ================= */
+.privacy-sheet {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 8000;
+  display: none;
+  align-items: flex-end;
+}
+.privacy-sheet.active { display: flex; }
+.privacy-inner {
+  width: 100%; max-width: 420px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 22px 0 20px;
+  animation: slideUp .25s ease-out;
+}
+.privacy-head {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111b21;
+  padding: 0 22px;
+}
+.privacy-sub {
+  font-size: 13px;
+  color: #667781;
+  padding: 6px 22px 18px;
+  border-bottom: 1px solid #f0f2f5;
+}
+.privacy-options { padding: 8px 0; }
+.privacy-opt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #111b21;
+}
+.privacy-opt:active { background: #f5f6f6; }
+.privacy-opt .radio {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid #8696a0;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: border-color .15s;
+}
+.privacy-opt.on .radio { border-color: #00a884; }
+.privacy-opt.on .radio::after {
+  content: '';
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #00a884;
+}
+.privacy-cancel {
+  display: block;
+  margin: 12px auto 0;
+  width: 90%;
+  padding: 14px;
+  background: transparent;
+  color: #00a884;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 24px;
+}
+/* ================= PIN SHEET ================= */
+.pin-sheet {
+  position: fixed; inset: 0;
+  background: #fff;
+  z-index: 9500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.pin-sheet.active { display: flex; }
+.pin-inner {
+  width: 100%; max-width: 340px;
+  padding: 20px;
+  text-align: center;
+}
+.pin-lock-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: #e7fce3;
+  color: #00a884;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 18px;
+}
+.pin-title {
+  font-size: 20px; font-weight: 600; color: #111b21;
+  margin-bottom: 6px;
+}
+.pin-sub {
+  font-size: 13px; color: #667781;
+  margin-bottom: 28px;
+}
+.pin-dots {
+  display: flex; justify-content: center; gap: 16px;
+  margin-bottom: 32px;
+}
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid #8696a0;
+  transition: background .15s, border-color .15s;
+}
+.pin-dot.filled { background: #00a884; border-color: #00a884; }
+.pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  max-width: 260px;
+  margin: 0 auto;
+}
+.pin-key {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f0f2f5;
+  border: none;
+  font-size: 24px;
+  font-weight: 500;
+  color: #111b21;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, transform .1s;
+  user-select: none;
+}
+.pin-key:active { background: #d9dce1; transform: scale(0.95); }
+.pin-key.empty { background: transparent; pointer-events: none; }
+.pin-error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 20px;
+  min-height: 18px;
+}
+/* ================= FORGOT PASSWORD SHEET ================= */
+.forgot-sheet {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 10000;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.forgot-sheet.active { display: flex; }
+.forgot-inner {
+  background: #fff; border-radius: 20px;
+  padding: 26px 22px; max-width: 380px; width: 100%;
+}
+.forgot-title { font-size: 20px; font-weight: 600; color: #111b21; margin-bottom: 6px; }
+.forgot-sub { font-size: 13px; color: #667781; line-height: 1.5; margin-bottom: 16px; }
+.forgot-inner input {
+  width: 100%; padding: 13px 16px; margin-bottom: 10px;
+  border: 1px solid #ddd; border-radius: 8px;
+  font-size: 15px; outline: none;
+}
+.forgot-inner input:focus { border-color: #00a884; }
+.forgot-btn {
+  display: block; width: 100%;
+  background: #00a884; color: #fff;
+  border: none; border-radius: 24px;
+  padding: 14px; font-size: 16px; font-weight: 600;
+  cursor: pointer; margin-top: 6px;
+}
+.forgot-btn:hover { background: #008069; }
+.forgot-cancel {
+  display: block; width: 100%;
+  background: transparent; color: #00a884;
+  border: none; padding: 14px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
 }
 /* --- CAMERA OVERLAY --- */
 .camera-overlay {
@@ -996,13 +1423,17 @@
         <div class="auth-error" id="authError"></div>
         <input type="text" id="authIdentifier" placeholder="Phone or Email">
         <input type="text" id="authName" placeholder="Your name" style="display:none">
+        <input type="email" id="authBackupEmail" placeholder="Backup email (for password reset)" style="display:none">
         <input type="password" id="authPassword" placeholder="Password">
         <button id="authBtn" onclick="doAuth()">Sign in</button>
 <div id="g_id_onload" data-client_id="399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
 <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left" style="margin-top:14px;display:flex;justify-content:center;"></div>
-        <div class="auth-switch">
+                <div class="auth-switch">
             <span id="authSwitchText">Don't have an account?</span>
             <a onclick="toggleAuthMode()" id="authSwitchBtn">Sign up</a>
+        </div>
+        <div style="text-align:center;margin-top:10px;font-size:14px;">
+            <a onclick="openForgotPassword()" style="color:#00a884;cursor:pointer;text-decoration:underline;">Forgot password?</a>
         </div>
     </div>
 </div>
@@ -1026,6 +1457,7 @@
 <div class="menu-item" onclick="closeChatMenu();toggleArchive()" id="archiveMenuItem">Archive chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Report')">Report</div>
 <div class="menu-item" onclick="closeChatMenu();toggleBlock()" id="blockMenuItem">Block</div>
+<div class="menu-item" id="lockChatMenuItem" onclick="closeChatMenu();toggleChatLock()">Lock chat</div>
 <div class="menu-item" onclick="closeChatMenu();clearChat()">Clear chat</div>
 <div class="menu-item" onclick="closeChatMenu();deleteChat()">Delete chat</div>
 </div>
@@ -1216,6 +1648,10 @@
             </div>
         </div>
              <div class="messages-area" id="messagesArea"></div>
+             <button class="jump-bottom-btn" id="jumpBottomBtn" onclick="jumpToBottom()" title="Jump to latest">
+                 <i class="fas fa-arrow-down"></i>
+                 <span class="jump-badge" id="jumpBadge" style="display:none;">0</span>
+             </button>
         <div class="reply-bar" id="replyBar">
             <div class="rq-content">
                 <div class="rq-name" id="replyBarName"></div>
@@ -1407,11 +1843,11 @@
             </div>
             <div class="settings-section-title">Who can see my personal info</div>
             <div class="settings-list">
-                <div class="settings-row" onclick="workInProgress('Last seen')"><div class="settings-row-text">Last seen and online<br><span class="settings-sub">My contacts, Everyone</span></div></div>
-                <div class="settings-row" onclick="workInProgress('Profile picture')"><div class="settings-row-text">Profile picture<br><span class="settings-sub">Everyone</span></div></div>
-                <div class="settings-row" onclick="workInProgress('About')"><div class="settings-row-text">About<br><span class="settings-sub">My contacts</span></div></div>
-                <div class="settings-row" onclick="workInProgress('Links')"><div class="settings-row-text">Links<br><span class="settings-sub">My contacts</span></div></div>
-                <div class="settings-row" onclick="workInProgress('Status privacy')"><div class="settings-row-text">Status<br><span class="settings-sub">My contacts</span></div></div>
+                                <div class="settings-row" onclick="openPrivacyPicker('lastSeen')"><div class="settings-row-text">Last seen and online<br><span class="settings-sub" id="pv_lastSeen">Everyone</span></div></div>
+                <div class="settings-row" onclick="openPrivacyPicker('profilePhoto')"><div class="settings-row-text">Profile picture<br><span class="settings-sub" id="pv_profilePhoto">Everyone</span></div></div>
+                <div class="settings-row" onclick="openPrivacyPicker('about')"><div class="settings-row-text">About<br><span class="settings-sub" id="pv_about">Everyone</span></div></div>
+                <div class="settings-row" onclick="openPrivacyPicker('links')"><div class="settings-row-text">Links<br><span class="settings-sub" id="pv_links">Everyone</span></div></div>
+                <div class="settings-row" onclick="openPrivacyPicker('status')"><div class="settings-row-text">Status<br><span class="settings-sub" id="pv_status">My contacts</span></div></div>
                 <div class="settings-row">
                     <div class="settings-row-text">Read receipts<br><span class="settings-sub">If turned off, you won't send or receive Read receipts.</span></div>
                     <div class="toggle on"><i class="fas fa-check"></i></div>
@@ -1429,9 +1865,12 @@
                 <div class="settings-row" onclick="workInProgress('Groups')"><div class="settings-row-text">Groups<br><span class="settings-sub">Everyone</span></div></div>
                 <div class="settings-row" onclick="workInProgress('Live location')"><div class="settings-row-text">Live location</div></div>
                 <div class="settings-row" onclick="workInProgress('Calls')"><div class="settings-row-text">Calls<br><span class="settings-sub">Silence unknown callers</span></div></div>
-                <div class="settings-row" onclick="openBlockedScreen()">
+                                <div class="settings-row" onclick="toggleAppLockSetting()">
+                    <div class="settings-row-text">App lock<br><span class="settings-sub" id="appLockSub">Disabled</span></div>
+                    <div class="toggle off" id="appLockToggle"><i class="fas fa-minus"></i></div>
+                </div>
+<div class="settings-row" onclick="openBlockedScreen()">
 <div class="settings-row-text">Contacts<br><span class="settings-sub">Blocked accounts, WhatsApp contacts</span></div></div>
-                <div class="settings-row" onclick="workInProgress('App lock')"><div class="settings-row-text">App lock<br><span class="settings-sub">Disabled</span></div></div>
                 <div class="settings-row" onclick="workInProgress('Chat lock')"><div class="settings-row-text">Chat lock</div></div>
                 <div class="settings-row">
                     <div class="settings-row-text">Allow camera effects<br><span class="settings-sub">Use effects in the camera and video calls.</span></div>
@@ -1658,8 +2097,17 @@
     <div class="status-viewer-content" id="svContent"></div>
     <div class="status-viewer-time" id="svTime"></div>
 
-    <!-- Floating emoji animation layer -->
+       <!-- Floating emoji animation layer -->
     <div class="emoji-burst-layer" id="emojiBurstLayer"></div>
+
+    <!-- Status reply bar -->
+    <div class="status-reply-bar" id="statusReplyBar">
+        <i class="fas fa-camera" onclick="statusReplyCamera()" title="Camera"></i>
+        <input type="text" id="statusReplyInput" placeholder="Reply…" maxlength="300">
+        <button id="statusReplySend" onclick="sendStatusReply()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
 <div class="reaction-picker" id="reactionPicker">
 <div class="reaction-opt" onclick="sendReaction('❤️')">❤️</div>
 <div class="reaction-opt" onclick="sendReaction('😂')">😂</div>
@@ -1681,15 +2129,26 @@
 </div>
 
     <!-- Reaction bar -->
-    <div class="reaction-bar">
-        <div class="reaction-btn" onclick="sendStatusReaction('❤️', this)">❤️</div>
-        <div class="reaction-btn" onclick="sendStatusReaction('🔥', this)">🔥</div>
-        <div class="reaction-btn" onclick="sendStatusReaction('😍', this)">😍</div>
-        <div class="reaction-btn" onclick="sendStatusReaction('👍', this)">👍</div>
-        <div class="reaction-btn" onclick="sendStatusReaction('🍃', this)">🍃</div>
-        <div class="reaction-btn" onclick="sendStatusReaction('💧', this)">💧</div>
+        <!-- Reaction bar -->
+    <div class="reaction-bar" id="statusReactionBar">
+        <div class="reaction-btn" data-emoji="❤️" onclick="sendStatusReaction('❤️', this)">❤️</div>
+        <div class="reaction-btn" data-emoji="🔥" onclick="sendStatusReaction('🔥', this)">🔥</div>
+        <div class="reaction-btn" data-emoji="😂" onclick="sendStatusReaction('😂', this)">😂</div>
+        <div class="reaction-btn" data-emoji="😮" onclick="sendStatusReaction('😮', this)">😮</div>
+        <div class="reaction-btn" data-emoji="😍" onclick="sendStatusReaction('😍', this)">😍</div>
+        <div class="reaction-btn" data-emoji="😢" onclick="sendStatusReaction('😢', this)">😢</div>
+        <div class="reaction-btn" data-emoji="👍" onclick="sendStatusReaction('👍', this)">👍</div>
+        <div class="reaction-btn" data-emoji="🙏" onclick="sendStatusReaction('🙏', this)">🙏</div>
+        <div class="reaction-btn more" onclick="openStatusEmojiPicker()" title="More reactions">＋</div>
     </div>
-</div>
+
+    <!-- Full emoji picker for status -->
+    <div class="status-emoji-picker" id="statusEmojiPicker" onclick="if(event.target===this)closeStatusEmojiPicker()">
+        <div class="status-emoji-inner">
+            <div class="status-emoji-head">Choose a reaction</div>
+            <div class="status-emoji-grid" id="statusEmojiGrid"></div>
+        </div>
+    </div>
 <div id="qrScannerScreen" style="position:fixed; inset:0; background:#000; z-index:9999; display:none; flex-direction:column;">
     <div style="padding:15px; color:white; display:flex; align-items:center;">
         <i class="fas fa-arrow-left" onclick="closeQrScanner()" style="font-size:24px; cursor:pointer;"></i>
@@ -1709,12 +2168,75 @@
 <div class="media-caption-sheet" id="mediaCaptionSheet" onclick="if(event.target===this)closeMediaCaption()">
   <div class="media-caption-inner">
     <div class="media-caption-preview" id="mediaCaptionPreview"></div>
+        <button class="media-caption-close" onclick="closeMediaCaption()" title="Cancel">
+      <i class="fas fa-times"></i>
+    </button>
+    <button class="viewonce-toggle" id="viewOnceToggle" onclick="toggleViewOnce()" title="View once">
+      <i class="fas fa-clock"></i>
+      <span class="vo-count">1</span>
+    </button>
     <div class="media-caption-input-row">
       <input type="text" id="mediaCaptionInput" placeholder="Add a caption…" maxlength="500">
       <button class="media-caption-send" id="mediaCaptionSendBtn" onclick="confirmSendMedia()">
         <i class="fas fa-paper-plane"></i>
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ================= PRIVACY PICKER ================= -->
+<div class="privacy-sheet" id="privacySheet" onclick="if(event.target===this)closePrivacyPicker()">
+  <div class="privacy-inner">
+    <div class="privacy-head" id="privacyHead">Privacy</div>
+    <div class="privacy-sub" id="privacySub">Choose who can see this</div>
+    <div class="privacy-options" id="privacyOptions"></div>
+    <button class="privacy-cancel" onclick="closePrivacyPicker()">Cancel</button>
+  </div>
+</div>
+
+<!-- ================= PIN ENTRY (Chat lock + App lock) ================= -->
+<div class="pin-sheet" id="pinSheet" onclick="if(event.target===this)cancelPinEntry()">
+  <div class="pin-inner">
+    <div class="pin-lock-icon"><i class="fas fa-lock"></i></div>
+    <div class="pin-title" id="pinTitle">Enter PIN</div>
+    <div class="pin-sub" id="pinSub">Enter 4-digit PIN</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-keypad" id="pinKeypad"></div>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<!-- ================= FORGOT PASSWORD (OTP) ================= -->
+<div class="forgot-sheet" id="forgotSheet" onclick="if(event.target===this)closeForgotPassword()">
+  <div class="forgot-inner">
+
+    <!-- Step 1: request code -->
+    <div id="fpStep1">
+      <div class="forgot-title">Forgot password?</div>
+      <div class="forgot-sub">Enter your phone or email — we'll send a 6-digit code to the backup email on your account.</div>
+      <input type="text" id="fpIdentifier" placeholder="Phone or Email">
+      <div id="fpError1" style="color:#e74c3c;font-size:13px;text-align:center;min-height:18px;"></div>
+      <button class="forgot-btn" onclick="requestOtp()">Send code</button>
+      <button class="forgot-cancel" onclick="closeForgotPassword()">Cancel</button>
+    </div>
+
+    <!-- Step 2: verify code + new password -->
+    <div id="fpStep2" style="display:none;">
+      <div class="forgot-title">Enter code</div>
+      <div class="forgot-sub" id="fpSentTo">We sent a code to your backup email</div>
+      <input type="text" id="fpOtp" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:8px;text-align:center;font-size:22px;">
+      <input type="password" id="fpNewPassword" placeholder="New password">
+      <input type="password" id="fpNewPassword2" placeholder="Confirm new password">
+      <div id="fpError2" style="color:#e74c3c;font-size:13px;text-align:center;min-height:18px;"></div>
+      <button class="forgot-btn" onclick="verifyOtpAndReset()">Reset password</button>
+      <div style="text-align:center;margin-top:12px;font-size:13px;color:#667781;">
+        Didn't get a code? <a onclick="backToFpStep1()" style="color:#00a884;cursor:pointer;">Try again</a>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2205,12 +2727,24 @@ function makeRoomId(idA, idB) {
 }
 
 async function openChatWindow(name, userId) {
+    const roomIdToCheck = makeRoomId(getMyId(), userId);
+    if (isChatLocked(roomIdToCheck)) {
+        // Ask for PIN, then re-call with the same args
+        openPinSheet({
+            purpose: 'chat-lock',
+            title: 'Locked chat',
+            sub: 'Enter PIN for ' + name,
+            chatRoomId: roomIdToCheck,
+            onSuccess: () => openChatWindow(name, userId)
+        });
+        return;
+    }
+
     playClickSound();
     activeChatName = name;
     document.getElementById('chatName').innerText = name;
-        const avatar = document.getElementById('chatAvatar');
+    const avatar = document.getElementById('chatAvatar');
     avatar.style.background = '#00a884';
-    // try to load peer avatar
     fetch('/api/users').then(r => r.json()).then(users => {
         const peer = users.find(u => u._id === userId);
         if (peer && peer.avatarUrl) {
@@ -2227,35 +2761,67 @@ async function openChatWindow(name, userId) {
         setTimeout(() => alert(activeChatName + ' is blocked. Unblock from the ⋮ menu to continue.'), 100);
     }
 
-    // Join the room for real-time messages
     socket.emit('joinChat', activeRoomId);
-    // Mark messages as read
+
+    // Reset jump-to-bottom state
+    jumpUnreadCount = 0;
+    updateJumpBadge();
+    const jumpBtn = document.getElementById('jumpBottomBtn');
+    if (jumpBtn) jumpBtn.classList.remove('show');
+
+    // Load messages FIRST
+    const area = document.getElementById('messagesArea');
+    area.innerHTML = '<div style="text-align:center;color:#8696a0;font-size:13px;padding:10px;">Loading…</div>';
+    try {
+        const res = await fetch('/api/messages/' + activeRoomId);
+        const msgs = await res.json();
+        const myId = getMyId();
+
+        // Index of first unread message from the other person
+        const firstUnreadIdx = msgs.findIndex(m =>
+            String(m.sender) !== String(myId) && !m.read && !m.deleted
+        );
+
+        area.innerHTML = '';
+        msgs.forEach((m, i) => {
+            if (i === firstUnreadIdx) {
+                const divider = document.createElement('div');
+                divider.className = 'unread-divider';
+                divider.id = 'unreadDivider';
+                area.appendChild(divider);
+            }
+            renderMessage(m);
+        });
+
+        // Jump to the unread line if present, else bottom
+        const dividerEl = document.getElementById('unreadDivider');
+        if (dividerEl) {
+            setTimeout(() => { area.scrollTop = dividerEl.offsetTop - 60; }, 50);
+        } else {
+            area.scrollTop = area.scrollHeight;
+        }
+    } catch (e) {
+        area.innerHTML = '';
+    }
+
+    // Mark read AFTER showing
     fetch('/api/messages/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomId: activeRoomId, userId: getMyId() })
     });
 
-    // Load previous messages
-    const area = document.getElementById('messagesArea');
-    area.innerHTML = '<div style="text-align:center;color:#8696a0;font-size:13px;padding:10px;">Loading…</div>';
-    try {
-        const res = await fetch('/api/messages/' + activeRoomId);
-        const msgs = await res.json();
-        area.innerHTML = '';
-        msgs.forEach(m => renderMessage(m));
-        area.scrollTop = area.scrollHeight;
-    } catch (e) {
-        area.innerHTML = '';
-    }
-
     document.getElementById('chatWindow').style.display = 'flex';
     document.getElementById('selectContactScreen').style.display = 'none';
     document.getElementById('mainFab').style.display = 'none';
-    if (unreadData.rooms[activeRoomId]) { unreadData.rooms[activeRoomId] = 0; unreadData.total = Math.max(0, unreadData.total - 1); refreshUnread(); }
-document.getElementById('groupInfoMenuItem').style.display = userId && String(userId).startsWith('group_') ? 'block' : 'none';
+    if (unreadData.rooms[activeRoomId]) {
+        unreadData.rooms[activeRoomId] = 0;
+        unreadData.total = Math.max(0, unreadData.total - 1);
+        refreshUnread();
+    }
+    document.getElementById('groupInfoMenuItem').style.display =
+        userId && String(userId).startsWith('group_') ? 'block' : 'none';
 }
-
 function renderMessage(m) {
     const area = document.getElementById('messagesArea');
     const isMine = m.sender === getMyId();
@@ -2279,7 +2845,19 @@ function renderMessage(m) {
     if (m.deleted) {
         bodyHtml = `<div class="msg-text" style="font-style:italic;color:#8696a0;">This message was deleted</div>`;
     } else {
-        if (m.mediaType === 'image') {
+                if (m.viewOnce && (m.mediaType === 'image' || m.mediaType === 'video')) {
+            const isMineVO = m.sender === getMyId();
+            const openedKey = 'wa_vo_opened_' + m._id;
+            const iOpened = localStorage.getItem(openedKey) === '1';
+            const locked = !isMineVO && iOpened;   // sender can always view; receiver locks after open
+            const label = m.mediaType === 'video' ? 'Video' : 'Photo';
+            const icon = m.mediaType === 'video' ? 'fa-video' : 'fa-image';
+            if (locked) {
+                bodyHtml = '<div class="vo-bubble opened"><div class="vo-circle"><i class="fas ' + icon + '"></i></div><span>' + label + ' opened</span></div>';
+            } else {
+                bodyHtml = '<div class="vo-bubble" onclick="openViewOnce(\'' + m._id + '\',\'' + m.mediaUrl + '\',\'' + m.mediaType + '\')"><div class="vo-circle"><i class="fas ' + icon + '"></i></div><span>' + label + ' (1)</span></div>';
+            }
+        } else if (m.mediaType === 'image') {
             bodyHtml = `<img src="${m.mediaUrl}" style="max-width:100%;border-radius:8px;display:block;margin-bottom:4px;cursor:pointer;" onclick="window.open('${m.mediaUrl}','_blank')">`;
         } else if (m.mediaType === 'video') {
             bodyHtml = `<video src="${m.mediaUrl}" controls style="max-width:100%;border-radius:8px;display:block;margin-bottom:4px;"></video>`;
@@ -2319,7 +2897,7 @@ const edt = m.edited ? ' <span class="msg-edited">(edited)</span>' : '';
 div.innerHTML = fwd + replyHtml + bodyHtml + '<span class="msg-time">' + time + edt + ' ' + tick + '</span>';
 renderReactions(div, m.reactions);
 
-    /    // Long-press (mobile) + right-click (desktop) → WhatsApp-style menu
+        // Long-press (mobile) + right-click (desktop) → WhatsApp-style menu
     let pressTimer = null, pressX = 0, pressY = 0;
     div.addEventListener('touchstart', (e) => {
         if (m.deleted) return;
@@ -2547,6 +3125,13 @@ async function deleteMessage(msgId) {
 // --- SEND IMAGE / VIDEO ---
 // Holds the currently-pending upload
 let pendingMedia = null;
+let pendingViewOnce = false;
+
+function toggleViewOnce() {
+  pendingViewOnce = !pendingViewOnce;
+  const t = document.getElementById('viewOnceToggle');
+  if (t) t.classList.toggle('on', pendingViewOnce);
+}
 
 async function sendMediaFile(event) {
     const file = event.target.files[0];
@@ -2600,19 +3185,23 @@ function closeMediaCaption() {
         URL.revokeObjectURL(pendingMedia.localPreviewUrl);
     }
     pendingMedia = null;
+    pendingViewOnce = false;
+    const t = document.getElementById('viewOnceToggle');
+    if (t) t.classList.remove('on');
 }
 
 function confirmSendMedia() {
     if (!pendingMedia || !activeRoomId) return;
     const caption = document.getElementById('mediaCaptionInput').value.trim();
 
-    socket.emit('sendMessage', {
+       socket.emit('sendMessage', {
         roomId: activeRoomId,
         sender: getMyId(),
         senderName: getMyName(),
         text: caption,
         mediaUrl: pendingMedia.url,
-        mediaType: pendingMedia.mediaType
+        mediaType: pendingMedia.mediaType,
+        viewOnce: pendingViewOnce
     });
 
     playSendSound();
@@ -2651,10 +3240,6 @@ async function sendCameraPhoto(event) {
 }
 
 // --- VOICE RECORDING ---
-let mediaRecorder = null;
-let audioChunks = [];
-let isRecording = false;
-
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
@@ -2764,13 +3349,6 @@ function openUPI() {
     }
 }
 
-function resetMicButton() {
-    const mic = document.getElementById('micIcon');
-    mic.style.color = '#00a884';
-    mic.classList.remove('fa-stop');
-    mic.classList.add('fa-microphone');
-}
-
        // --- TYPING + INPUT LISTENER ---
     let typingCooldown = null;
         document.getElementById('chatInput').addEventListener('input', function () {
@@ -2810,6 +3388,8 @@ function toggleAuthMode() {
     document.getElementById('authTitle').innerText = authMode === 'login' ? 'Sign in' : 'Sign up';
     document.getElementById('authBtn').innerText = authMode === 'login' ? 'Sign in' : 'Sign up';
     document.getElementById('authName').style.display = authMode === 'signup' ? 'block' : 'none';
+    const backupEl = document.getElementById('authBackupEmail');
+    if (backupEl) backupEl.style.display = authMode === 'signup' ? 'block' : 'none';
     document.getElementById('authSwitchText').innerText = authMode === 'login' ? "Don't have an account?" : 'Already have an account?';
     document.getElementById('authSwitchBtn').innerText = authMode === 'login' ? 'Sign up' : 'Sign in';
     document.getElementById('authError').innerText = '';
@@ -2837,6 +3417,8 @@ async function doAuth() {
     const identifier = document.getElementById('authIdentifier').value.trim();
     const name = document.getElementById('authName').value.trim();
     const password = document.getElementById('authPassword').value;
+    const backupEmailEl = document.getElementById('authBackupEmail');
+    const backupEmail = backupEmailEl ? backupEmailEl.value.trim() : '';
     const err = document.getElementById('authError');
     err.innerText = '';
 
@@ -2844,7 +3426,9 @@ async function doAuth() {
     if (authMode === 'signup' && !name) return err.innerText = 'Enter your name';
 
     const url = authMode === 'login' ? '/api/login' : '/api/signup';
-    const body = authMode === 'login' ? { identifier, password } : { identifier, name, password };
+    const body = authMode === 'login'
+        ? { identifier, password }
+        : { identifier, name, password, backupEmail };
 
     try {
         const res = await fetch(url, {
@@ -3291,11 +3875,66 @@ function openStatusViewer(status) {
     statusTimer = setTimeout(closeStatusViewer, 5000);
 }
 
+/* ================= VIEW-ONCE VIEWER ================= */
+function openViewOnce(msgId, url, type) {
+    const existing = document.getElementById('voViewer');
+    if (existing) existing.remove();
+
+    const viewer = document.createElement('div');
+    viewer.id = 'voViewer';
+    viewer.className = 'vo-viewer active';
+
+    viewer.innerHTML =
+      '<div class="vo-viewer-head">' +
+        '<i class="fas fa-times" onclick="closeViewOnce(\'' + msgId + '\')"></i>' +
+        '<div class="vo-info"><b>View once</b><small>Tap ✕ when done — it will be deleted</small></div>' +
+      '</div>' +
+      '<div class="vo-viewer-body" id="voViewerBody"></div>' +
+      '<div class="vo-viewer-foot">Once you close this, you can\'t see it again</div>';
+
+    document.body.appendChild(viewer);
+
+    const body = document.getElementById('voViewerBody');
+    if (type === 'video') {
+        const v = document.createElement('video');
+        v.src = url;
+        v.autoplay = true;
+        v.controls = true;
+        v.playsInline = true;
+        body.appendChild(v);
+    } else {
+        const img = document.createElement('img');
+        img.src = url;
+        body.appendChild(img);
+    }
+}
+
+function closeViewOnce(msgId) {
+    const v = document.getElementById('voViewer');
+    if (v) v.remove();
+    if (msgId) {
+        try { localStorage.setItem('wa_vo_opened_' + msgId, '1'); } catch(e){}
+        // Re-render just this message bubble
+        const el = document.querySelector('#messagesArea [data-msg-id="' + msgId + '"]');
+        if (el && el._messageData) {
+            const clone = document.createElement('div');
+            el.replaceWith(clone);
+            clone.replaceWith(el);
+            // Simplest: reload the message
+            const m = el._messageData;
+            el.outerHTML = '';   // remove old
+            renderMessage(m);    // draw again with locked state
+        }
+    }
+}
 function closeStatusViewer() {
     clearTimeout(statusTimer);
     document.getElementById('statusViewer').classList.remove('active');
     document.getElementById('svContent').innerHTML = '';
     activeStatus = null;
+    pendingStatusReplyMedia = null;
+    const inp = document.getElementById('statusReplyInput');
+    if (inp) { inp.value = ''; inp.placeholder = 'Reply…'; }
 }
 // --- CALLS LOGIC ---
 let activeCallPeerId = null;
@@ -3548,13 +4187,151 @@ function sendStatusReaction(emoji, btnEl) {
     // Bounce the button
     if (btnEl) {
         btnEl.style.transform = 'scale(1.6)';
-        setTimeout(() => btnEl.style.transform = '', 180);
+        setTimeout(() => { btnEl.style.transform = ''; }, 180);
     }
-    // Spawn 15 emojis with staggered delay
-    for (let i = 0; i < 15; i++) {
-        setTimeout(() => spawnFloatingEmoji(emoji), i * 70);
+    // Spawn floating emojis with staggered delay
+    spawnStatusEmojiBurst(emoji);
+    // Close picker if open
+    closeStatusEmojiPicker();
+    // Broadcast to other viewers of this status (optional)
+    if (activeStatus && socket) {
+        socket.emit('statusReaction', {
+            statusId: activeStatus._id,
+            userId: getMyId(),
+            userName: getMyName(),
+            emoji
+        });
     }
 }
+
+function spawnStatusEmojiBurst(emoji) {
+    const layer = document.getElementById('emojiBurstLayer');
+    if (!layer) return;
+    for (let i = 0; i < 15; i++) {
+        setTimeout(() => spawnFloatingEmoji(emoji), i * 60);
+    }
+}
+
+/* ================= STATUS EMOJI PICKER ================= */
+const STATUS_EMOJI_SET = [
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍',
+    '🔥','✨','⭐','💫','💥','🌟',
+    '😂','🤣','😍','🥰','😘','😎','🤩',
+    '😮','😱','😢','😭','🤔','🙄','😴',
+    '👍','👎','👏','🙏','👌','✌️','🤝','💪',
+    '🎉','🎊','🥳','🎁','🍀','🌈',
+    '💯','💢','💤','💦'
+];
+
+function openStatusEmojiPicker() {
+    const grid = document.getElementById('statusEmojiGrid');
+    if (!grid) return;
+    if (!grid.dataset.built) {
+        grid.innerHTML = STATUS_EMOJI_SET.map(e =>
+            '<span data-emoji="' + e + '">' + e + '</span>'
+        ).join('');
+        grid.querySelectorAll('span').forEach(el => {
+            el.onclick = () => {
+                const emo = el.dataset.emoji;
+                spawnStatusEmojiBurst(emo);
+                if (activeStatus && socket) {
+                    socket.emit('statusReaction', {
+                        statusId: activeStatus._id,
+                        userId: getMyId(),
+                        userName: getMyName(),
+                        emoji: emo
+                    });
+                }
+                closeStatusEmojiPicker();
+            };
+        });
+        grid.dataset.built = '1';
+    }
+    document.getElementById('statusEmojiPicker').classList.add('active');
+}
+
+function closeStatusEmojiPicker() {
+    document.getElementById('statusEmojiPicker').classList.remove('active');
+}
+/* ================= STATUS REPLY ================= */
+let pendingStatusReplyMedia = null;
+
+async function sendStatusReply() {
+    if (!activeStatus) return;
+    const input = document.getElementById('statusReplyInput');
+    const text = input.value.trim();
+    if (!text && !pendingStatusReplyMedia) return;
+
+    const ownerId = activeStatus.userId;
+    if (String(ownerId) === String(getMyId())) {
+        // Replying to your own status — no self-chat
+        input.value = '';
+        return;
+    }
+
+    const roomId = makeRoomId(getMyId(), ownerId);
+    const prefix = '📸 Reply to your status:\n';
+    const body = prefix + (text || '');
+    const mediaUrl = pendingStatusReplyMedia ? pendingStatusReplyMedia.url : null;
+    const mediaType = pendingStatusReplyMedia ? pendingStatusReplyMedia.mediaType : null;
+
+    // Close viewer, jump into chat with the status owner, send message
+    closeStatusViewer();
+    input.value = '';
+    pendingStatusReplyMedia = null;
+
+    setTimeout(async () => {
+        try {
+            await openChatWindow(activeStatus.userName || 'Chat', ownerId);
+            setTimeout(() => {
+                socket.emit('sendMessage', {
+                    roomId: roomId,
+                    sender: getMyId(),
+                    senderName: getMyName(),
+                    text: body,
+                    mediaUrl,
+                    mediaType
+                });
+                playSendSound();
+            }, 350);
+        } catch(e) { console.warn('status reply failed', e); }
+    }, 250);
+}
+
+function statusReplyCamera() {
+    // Reuse the existing camera → but stash the result for status reply
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,video/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const mediaType = file.type.startsWith('video') ? 'video' : 'image';
+        const fd = new FormData();
+        fd.append('media', file);
+        try {
+            const r = await fetch('/api/message-media', { method: 'POST', body: fd });
+            const d = await r.json();
+            if (!d.url) throw new Error('Upload failed');
+            pendingStatusReplyMedia = { url: d.url, mediaType };
+            document.getElementById('statusReplyInput').placeholder =
+                mediaType === 'video' ? 'Video attached — add a reply…' : 'Photo attached — add a reply…';
+            document.getElementById('statusReplyInput').focus();
+        } catch(e) {
+            alert('Upload failed');
+        }
+    };
+    input.click();
+}
+
+// Also allow Enter key to send
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' &&
+        document.activeElement &&
+        document.activeElement.id === 'statusReplyInput') {
+        sendStatusReply();
+    }
+});
 
 function spawnFloatingEmoji(emoji) {
     const layer = document.getElementById('emojiBurstLayer');
@@ -3562,17 +4339,23 @@ function spawnFloatingEmoji(emoji) {
     const el = document.createElement('div');
     el.className = 'floating-emoji';
     el.textContent = emoji;
-    // Random horizontal position
-    el.style.left = (5 + Math.random() * 90) + '%';
+
+    // Random horizontal
+    el.style.left = (3 + Math.random() * 94) + '%';
     // Random size
-    el.style.fontSize = (22 + Math.random() * 22) + 'px';
-    // Random speed
-    el.style.animationDuration = (2.4 + Math.random() * 1.6) + 's';
-    // Random hue for extra color variety
-    const hue = Math.floor(Math.random() * 360);
-    el.style.filter = `drop-shadow(0 2px 6px rgba(0,0,0,0.5)) hue-rotate(${hue}deg)`;
+    el.style.fontSize = (26 + Math.random() * 26) + 'px';
+    // Random animation duration
+    el.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
+    // Random rotation tilt
+    const tilt = (Math.random() * 40 - 20).toFixed(1);
+    el.style.setProperty('--tilt', tilt + 'deg');
+    // Optional hue variety (only on some)
+    if (Math.random() < 0.3) {
+        const hue = Math.floor(Math.random() * 360);
+        el.style.filter = `drop-shadow(0 4px 12px rgba(0,0,0,0.6)) hue-rotate(${hue}deg)`;
+    }
+
     layer.appendChild(el);
-    // Clean up after animation ends
     setTimeout(() => el.remove(), 4200);
 }
 // --- LIVE CAMERA CAPTURE ---
@@ -3669,6 +4452,7 @@ function openSettings(page) {
     playClickSound();
     document.getElementById('settingsScreen').classList.add('active');
     document.querySelectorAll('.settings-page').forEach(p => p.classList.remove('active'));
+    if (page === 'privacy') applyPrivacyLabels();
     const target = document.getElementById('set_' + page);
     if (target) target.classList.add('active');
     if (page === 'appIcon') renderIconGrid();
@@ -3702,8 +4486,302 @@ try {
   const sm = localStorage.getItem('wa_starred_msgs');
   if (sm) prefs.starredMsgs = JSON.parse(sm) || [];
 } catch(e) {}
+/* ================= PIN ENTRY (shared) ================= */
+let pinBuffer = '';
+let pinPurpose = null;   // 'chat-lock' | 'chat-setup' | 'app-lock' | 'app-setup'
+let pinCallback = null;
+let pendingChatToLock = null;
+
+async function sha256(str) {
+  const buf = new TextEncoder().encode(str);
+  const h = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function buildPinKeypad() {
+  const kp = document.getElementById('pinKeypad');
+  if (kp.dataset.built) return;
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  kp.innerHTML = keys.map(k => {
+    if (k === '') return '<button class="pin-key empty"></button>';
+    return '<button class="pin-key" data-k="' + k + '">' + k + '</button>';
+  }).join('');
+  kp.querySelectorAll('.pin-key').forEach(b => {
+    b.onclick = () => handlePinKey(b.dataset.k);
+  });
+  kp.dataset.built = '1';
+}
+
+function handlePinKey(k) {
+  if (k === '⌫') {
+    pinBuffer = pinBuffer.slice(0, -1);
+  } else if (/^\d$/.test(k) && pinBuffer.length < 4) {
+    pinBuffer += k;
+  }
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(submitPin, 150);
+}
+
+function updatePinDots() {
+  document.querySelectorAll('#pinDots .pin-dot').forEach((d, i) => {
+    d.classList.toggle('filled', i < pinBuffer.length);
+  });
+}
+
+function openPinSheet(opts) {
+  buildPinKeypad();
+  pinBuffer = '';
+  pinPurpose = opts.purpose;
+  pinCallback = opts.onSuccess || null;
+  pendingChatToLock = opts.chatRoomId || null;
+  document.getElementById('pinTitle').innerText = opts.title || 'Enter PIN';
+  document.getElementById('pinSub').innerText   = opts.sub   || 'Enter 4-digit PIN';
+  document.getElementById('pinError').innerText = '';
+  updatePinDots();
+  document.getElementById('pinSheet').classList.add('active');
+}
+
+function closePinSheet() {
+  document.getElementById('pinSheet').classList.remove('active');
+  pinBuffer = '';
+  pinPurpose = null;
+  pinCallback = null;
+  pendingChatToLock = null;
+}
+
+function cancelPinEntry() { closePinSheet(); }
+
+async function submitPin() {
+  const err = document.getElementById('pinError');
+  const pin = pinBuffer;
+
+  if (pinPurpose === 'chat-setup') {
+    // Save new PIN for a chat
+    const hash = await sha256(pin);
+    const map = JSON.parse(localStorage.getItem('wa_chat_pins') || '{}');
+    map[pendingChatToLock] = hash;
+    localStorage.setItem('wa_chat_pins', JSON.stringify(map));
+    closePinSheet();
+    alert('Chat locked');
+    return;
+  }
+
+  if (pinPurpose === 'chat-lock') {
+    const hash = await sha256(pin);
+    const map = JSON.parse(localStorage.getItem('wa_chat_pins') || '{}');
+    if (map[pendingChatToLock] === hash) {
+      closePinSheet();
+      if (pinCallback) pinCallback();
+    } else {
+      err.innerText = 'Wrong PIN';
+      pinBuffer = '';
+      updatePinDots();
+    }
+    return;
+  }
+
+  if (pinPurpose === 'app-setup') {
+    const hash = await sha256(pin);
+    localStorage.setItem('wa_app_pin', hash);
+    localStorage.setItem('wa_app_lock', 'on');
+    localStorage.setItem('wa_app_unlocked_at', String(Date.now()));
+    closePinSheet();
+    alert('App lock enabled');
+    applyAppLockLabel();
+    return;
+  }
+
+  if (pinPurpose === 'app-lock') {
+    const stored = localStorage.getItem('wa_app_pin') || '';
+    const hash = await sha256(pin);
+    if (stored === hash) {
+      localStorage.setItem('wa_app_unlocked_at', String(Date.now()));
+      closePinSheet();
+      if (pinCallback) pinCallback();
+    } else {
+      err.innerText = 'Wrong PIN';
+      pinBuffer = '';
+      updatePinDots();
+    }
+  }
+}
+
+/* ----- App lock helpers ----- */
+function isAppLockOn() {
+  return localStorage.getItem('wa_app_lock') === 'on';
+}
+
+function applyAppLockLabel() {
+  const sub = document.getElementById('appLockSub');
+  const tog = document.getElementById('appLockToggle');
+  const on = isAppLockOn();
+  if (sub) sub.innerText = on ? 'Enabled' : 'Disabled';
+  if (tog) {
+    tog.className = 'toggle ' + (on ? 'on' : 'off');
+    tog.innerHTML = on ? '<i class="fas fa-check"></i>' : '<i class="fas fa-minus"></i>';
+  }
+}
+
+function toggleAppLockSetting() {
+  if (isAppLockOn()) {
+    const pin = prompt('Enter current PIN to disable app lock:');
+    if (pin === null) return;
+    sha256(pin).then(hash => {
+      if (hash === (localStorage.getItem('wa_app_pin') || '')) {
+        localStorage.removeItem('wa_app_lock');
+        localStorage.removeItem('wa_app_pin');
+        alert('App lock disabled');
+        applyAppLockLabel();
+      } else {
+        alert('Wrong PIN');
+      }
+    });
+  } else {
+    openPinSheet({
+      purpose: 'app-setup',
+      title: 'Set app lock PIN',
+      sub: 'Choose a 4-digit PIN for the app'
+    });
+  }
+}
+
+function requireAppUnlock() {
+  if (!isAppLockOn()) return;
+  const lastUnlocked = parseInt(localStorage.getItem('wa_app_unlocked_at') || '0', 10);
+  // Skip if unlocked within last 30 seconds (avoid re-prompt after quick switches)
+  if (Date.now() - lastUnlocked < 30 * 1000) return;
+  openPinSheet({
+    purpose: 'app-lock',
+    title: 'App locked',
+    sub: 'Enter PIN to unlock'
+  });
+}
+
+// On startup
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    applyAppLockLabel();
+    requireAppUnlock();
+  }, 2200);   // after splash
+});
+
+// When app returns from background
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    requireAppUnlock();
+  }
+});
+/* ----- Chat lock helpers ----- */
+function isChatLocked(roomId) {
+  try {
+    const map = JSON.parse(localStorage.getItem('wa_chat_pins') || '{}');
+    return !!map[roomId];
+  } catch(e) { return false; }
+}
+
+function lockChat(roomId) {
+  if (!roomId) return;
+  pendingChatToLock = roomId;
+  openPinSheet({
+    purpose: 'chat-setup',
+    title: 'Set chat lock PIN',
+    sub: 'Choose a 4-digit PIN for this chat',
+    chatRoomId: roomId
+  });
+}
+
+function unlockChat(roomId) {
+  if (!roomId) return;
+  try {
+    const map = JSON.parse(localStorage.getItem('wa_chat_pins') || '{}');
+    delete map[roomId];
+    localStorage.setItem('wa_chat_pins', JSON.stringify(map));
+    alert('Chat unlocked');
+  } catch(e) {}
+}
+/* ================= PRIVACY SETTINGS ================= */
+const PRIVACY_FIELDS = {
+  lastSeen:      { label: 'Last seen and online', options: ['everyone','contacts','nobody'] },
+  profilePhoto:  { label: 'Profile picture',      options: ['everyone','contacts','nobody'] },
+  about:         { label: 'About',                options: ['everyone','contacts','nobody'] },
+  links:         { label: 'Links',                options: ['everyone','contacts','nobody'] },
+  status:        { label: 'Status',               options: ['contacts','nobody'] }
+};
+
+const PRIVACY_LABELS = {
+  everyone: 'Everyone',
+  contacts: 'My contacts',
+  nobody:   'Nobody'
+};
+
+let activePrivacyField = null;
+
+function openPrivacyPicker(field) {
+  if (!PRIVACY_FIELDS[field]) return;
+  activePrivacyField = field;
+  const conf = PRIVACY_FIELDS[field];
+  const current = (prefs.privacy && prefs.privacy[field]) || conf.options[0];
+
+  document.getElementById('privacyHead').innerText = conf.label;
+  document.getElementById('privacySub').innerText =
+    field === 'status' ? 'Choose who can see your status' :
+    field === 'lastSeen' ? 'Choose who can see when you were last online' :
+    'Choose who can see this';
+
+  const box = document.getElementById('privacyOptions');
+  box.innerHTML = '';
+  conf.options.forEach(opt => {
+    const row = document.createElement('div');
+    row.className = 'privacy-opt' + (opt === current ? ' on' : '');
+    row.innerHTML = '<div class="radio"></div><span>' + PRIVACY_LABELS[opt] + '</span>';
+    row.onclick = () => savePrivacySetting(field, opt);
+    box.appendChild(row);
+  });
+
+  document.getElementById('privacySheet').classList.add('active');
+}
+
+function closePrivacyPicker() {
+  document.getElementById('privacySheet').classList.remove('active');
+  activePrivacyField = null;
+}
+
+async function savePrivacySetting(field, value) {
+  prefs.privacy = prefs.privacy || {};
+  prefs.privacy[field] = value;
+  applyPrivacyLabels();
+  closePrivacyPicker();
+  try {
+    await fetch('/api/prefs/' + getMyId(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: 'privacy', value: prefs.privacy })
+    });
+  } catch(e) { console.warn('save privacy failed', e); }
+}
+
+function applyPrivacyLabels() {
+  const p = prefs.privacy || {};
+  const defaults = {
+    lastSeen: 'everyone', profilePhoto: 'everyone',
+    about: 'everyone', links: 'everyone', status: 'contacts'
+  };
+  Object.keys(defaults).forEach(k => {
+    const el = document.getElementById('pv_' + k);
+    if (el) el.innerText = PRIVACY_LABELS[p[k] || defaults[k]] || defaults[k];
+  });
+}
 async function loadPrefs() {
-  try { const r = await fetch('/api/prefs/' + getMyId()); prefs = await r.json(); } catch(e) {}
+  try {
+    const r = await fetch('/api/prefs/' + getMyId());
+    const p = await r.json();
+    // Preserve local-only fields when merging server prefs
+    const localStarredMsgs = prefs.starredMsgs || [];
+    prefs = Object.assign({}, prefs, p);
+    prefs.starredMsgs = localStarredMsgs;
+    if (!prefs.privacy) prefs.privacy = {};
+    applyPrivacyLabels();
+  } catch(e) {}
 }
 async function savePrefs(field, value) {
   prefs[field] = value;
@@ -3881,17 +4959,6 @@ async function openAddMemberPicker() {
   });
   const j = await r.json();
   if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
-  openGroupInfo();
-}
-  if (!activeGroupId) return;
-  const ur = await fetch('/api/users');
-  const users = await ur.json();
-  const others = users.filter(u => u._id !== getMyId());
-  const names = others.map((u, i) => (i + 1) + '. ' + u.name).join('\n');
-  const pick = prompt('Add which member?\n\n' + names + '\n\nEnter number:');
-  const idx = parseInt(pick) - 1;
-  if (isNaN(idx) || !others[idx]) return;
-  await fetch('/api/groups/addMember', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId: activeGroupId, userId: others[idx]._id }) });
   openGroupInfo();
 }
 function openDisappearingPicker() { document.getElementById('disappearingPicker').classList.add('active'); }
@@ -4315,7 +5382,7 @@ function requestNotificationPermission() {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'default') Notification.requestPermission();
 }
-function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');updateChatMenuItemLabels();}
+function toggleChatMenu(e){e.stopPropagation();const m=document.getElementById('chatMenu');document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));const r=document.getElementById('threeDotMenu');if(r)r.style.display='none';m.classList.toggle('active');updateChatMenuItemLabels();updateChatMenuItemLabelsWithLock();}
 function closeChatMenu(){document.getElementById('chatMenu').classList.remove('active');}
 document.addEventListener('click',e=>{if(!e.target.closest('.chat-menu')&&!e.target.closest('.chat-window-header'))document.querySelectorAll('.chat-menu').forEach(x=>x.classList.remove('active'));});
 function openContactInfo(){if(!activeChatUserId)return;document.getElementById('contactInfoScreen').classList.add('active');document.getElementById('ciName').innerText=activeChatName;const a=document.getElementById('ciAvatar');a.style.background='#00a884';fetch('/api/users').then(r=>r.json()).then(us=>{const u=us.find(x=>x._id===activeChatUserId);if(u){document.getElementById('ciId').innerText=u.identifier;if(u.about)document.getElementById('ciId').innerText=u.identifier+' • '+u.about;if(u.avatarUrl)a.innerHTML=`<img src="${u.avatarUrl}">`;else a.innerText=u.name.charAt(0).toUpperCase();}});}
@@ -4346,6 +5413,18 @@ function toggleBlock(){
   else blockContact();
 }
 function toggleMuteChat(){alert('Muted');}
+
+function toggleChatLock() {
+  if (!activeRoomId) return;
+  if (isChatLocked(activeRoomId)) unlockChat(activeRoomId);
+  else                            lockChat(activeRoomId);
+}
+
+function updateChatMenuItemLabelsWithLock() {
+  const el = document.getElementById('lockChatMenuItem');
+  if (!el || !activeRoomId) return;
+  el.innerText = isChatLocked(activeRoomId) ? 'Unlock chat' : 'Lock chat';
+}
 // --- SIGNALING SERVER CONNECTION ---
 socket.on('connect', () => {
     console.log('✅ Connected to signaling server. My socket ID:', socket.id);
@@ -4393,9 +5472,18 @@ socket.on('newMessage', (msg) => {
     renderMessage(msg);
     if (msg.sender !== getMyId()) {
         playReceiveSound();
-            showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
-      if (document.hidden) refreshUnread();
-        // If the chat is open, mark incoming messages as read immediately
+        showNotification(msg.senderName || 'New message', msg.text || '(media)', msg);
+
+        // Bump jump badge if user is scrolled up
+        const area = document.getElementById('messagesArea');
+        const nearBottom = area && (area.scrollHeight - area.scrollTop - area.clientHeight < 100);
+        if (!nearBottom) {
+            jumpUnreadCount++;
+            updateJumpBadge();
+            document.getElementById('jumpBottomBtn').classList.add('show');
+        }
+
+        if (document.hidden) refreshUnread();
         fetch('/api/messages/read', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4413,6 +5501,47 @@ socket.on('typing', (data) => {
         nameEl.innerText = activeChatName;
     }, 1500);
 });
+/* ================= JUMP TO BOTTOM ================= */
+let jumpUnreadCount = 0;
+
+function updateJumpBadge() {
+    const badge = document.getElementById('jumpBadge');
+    if (!badge) return;
+    if (jumpUnreadCount > 0) {
+        badge.innerText = jumpUnreadCount > 99 ? '99+' : jumpUnreadCount;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function jumpToBottom() {
+    const area = document.getElementById('messagesArea');
+    if (!area) return;
+    area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    jumpUnreadCount = 0;
+    updateJumpBadge();
+    const btn = document.getElementById('jumpBottomBtn');
+    if (btn) btn.classList.remove('show');
+}
+
+(function initJumpButton() {
+    const area = document.getElementById('messagesArea');
+    if (!area) return;
+    area.addEventListener('scroll', () => {
+        const btn = document.getElementById('jumpBottomBtn');
+        if (!btn) return;
+        const nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+        if (nearBottom) {
+            btn.classList.remove('show');
+            jumpUnreadCount = 0;
+            updateJumpBadge();
+        } else {
+            btn.classList.add('show');
+        }
+    });
+})();
+
 function filterChats(query) {
     const q = query.trim().toLowerCase();
     document.querySelectorAll('#chatList .chat-item').forEach(el => {
@@ -4474,10 +5603,12 @@ meRow.dataset.pinned = '0';
 
         // Other users
         users.filter(u => u._id !== getMyId()).forEach(u => {
-            const isOnline = onlineUserIds.includes(u._id.toString());
+                        const isOnline = onlineUserIds.includes(u._id.toString());
             const statusText = isOnline
                 ? `<span class="online-dot"></span>online`
-                : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`;
+                : (u.hideLastSeen
+                    ? `<span class="offline-dot"></span>offline`
+                    : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`);
             const el = document.createElement('div');
             el.className = 'chat-item';
 el.dataset.roomId = makeRoomId(getMyId(), u._id);

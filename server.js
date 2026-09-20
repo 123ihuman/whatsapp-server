@@ -15,6 +15,22 @@ try {
 } catch (e) {
     console.warn('⚠️ Firebase Admin init failed:', e.message);
 }
+const nodemailer = require('nodemailer');
+
+// Gmail SMTP transporter — uses App Password (not your Gmail password)
+const mailer = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD
+    }
+});
+
+mailer.verify().then(() => {
+    console.log('✅ Gmail SMTP ready');
+}).catch(err => {
+    console.warn('⚠️ Gmail SMTP not ready:', err.message);
+});
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -76,6 +92,7 @@ const messageSchema = new mongoose.Schema({
     text:      { type: String, default: '' },
     mediaUrl:  { type: String, default: null },
     mediaType: { type: String, default: null },
+    viewOnce:  { type: Boolean, default: false },
     replyTo:   { type: mongoose.Schema.Types.Mixed, default: null },
     reactions: { type: mongoose.Schema.Types.Mixed, default: {} },
     edited:    { type: Boolean, default: false },
@@ -92,7 +109,8 @@ const userPrefsSchema = new mongoose.Schema({
     pinned:  { type: [String], default: [] },
     archived:{ type: [String], default: [] },
     starred: { type: [String], default: [] },
-    blocked: { type: [String], default: [] }
+    blocked: { type: [String], default: [] },
+    privacy: { type: mongoose.Schema.Types.Mixed, default: {} }
 });
 const UserPrefs = mongoose.model('UserPrefs', userPrefsSchema);
 
@@ -118,13 +136,17 @@ const callSchema = new mongoose.Schema({
 });
 const Call = mongoose.model('Call', callSchema);
 const userSchema = new mongoose.Schema({
-    identifier: { type: String, required: true, unique: true },
-    name:       { type: String, required: true },
-    password:   { type: String, required: true },
-    avatarUrl:  { type: String, default: null },
-    fcmToken:   { type: String, default: null },
-    lastSeen:   { type: Date, default: Date.now },
-    createdAt:  { type: Date, default: Date.now }
+    identifier:  { type: String, required: true, unique: true },
+    name:        { type: String, required: true },
+    password:    { type: String, required: true },
+    avatarUrl:   { type: String, default: null },
+    fcmToken:    { type: String, default: null },
+    backupEmail: { type: String, default: null },
+    otpHash:     { type: String, default: null },
+    otpExpiry:   { type: Date,   default: null },
+    otpAttempts: { type: Number, default: 0 },
+    lastSeen:    { type: Date, default: Date.now },
+    createdAt:   { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -325,12 +347,17 @@ app.post('/api/prefs/:userId', async (req, res) => {
 // ---------- AUTH ROUTES ----------
 app.post('/api/signup', async (req, res) => {
     try {
-        const { identifier, name, password } = req.body;
+        const { identifier, name, password, backupEmail } = req.body;
         if (!identifier || !name || !password) return res.status(400).json({ error: 'Missing fields' });
         const existing = await User.findOne({ identifier });
         if (existing) return res.status(400).json({ error: 'User already exists' });
         const hashed = await bcrypt.hash(password, 10);
-        const user = await User.create({ identifier, name, password: hashed });
+        const user = await User.create({
+            identifier,
+            name,
+            password: hashed,
+            backupEmail: backupEmail || null
+        });
         const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
         res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier } });
     } catch (err) {
@@ -358,6 +385,183 @@ app.post('/api/google-login', async (req, res) => {
     const token = jwt.sign({ id: user._id, name: user.name, identifier: user.identifier }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier, avatarUrl: user.avatarUrl } });
   } catch (err) { console.error('Google login error:', err); res.status(401).json({ error: 'Invalid Google token' }); }
+});
+
+// ---------- OTP PASSWORD RESET ----------
+const OTP_TTL_MS = 10 * 60 * 1000;
+// ... (first block: generateOtp, maskEmail, both routes) ...
+app.post('/api/forgot-password/verify', async (req, res) => {
+    // ... first verify handler ...
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { identifier } = req.body;
+        if (!identifier) return res.status(400).json({ error: 'Missing identifier' });
+
+        const user = await User.findOne({ identifier });
+        // Do not leak whether the account exists
+        if (!user) return res.json({ ok: true, sentTo: null, generic: true });
+
+        if (!user.backupEmail) {
+            return res.status(400).json({ error: 'No backup email on file for this account' });
+        }
+
+        // Rate limit
+        const lastSent = lastOtpSentAt.get(String(user._id)) || 0;
+        if (Date.now() - lastSent < OTP_RATE_WINDOW) {
+            const wait = Math.ceil((OTP_RATE_WINDOW - (Date.now() - lastSent)) / 1000);
+            return res.status(429).json({ error: 'Please wait ' + wait + 's before requesting a new code' });
+        }
+
+        const otp = generateOtp();
+        user.otpHash = await bcrypt.hash(otp, 10);
+        user.otpExpiry = new Date(Date.now() + OTP_TTL_MS);
+        user.otpAttempts = 0;
+        await user.save();
+        lastOtpSentAt.set(String(user._id), Date.now());
+
+        const mail = {
+            from: '"WhatsApp Clone" <' + process.env.GMAIL_USER + '>',
+            to: user.backupEmail,
+            subject: 'Your password reset code',
+            text:
+                'Hi ' + user.name + ',\n\n' +
+                'Your password reset code is: ' + otp + '\n\n' +
+                'This code expires in 10 minutes. If you did not request a password reset, you can safely ignore this email.\n\n' +
+                '— WhatsApp Clone',
+            html:
+                '<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;">' +
+                '<h2 style="color:#111b21;">Password reset</h2>' +
+                '<p style="color:#667781;">Hi ' + user.name + ',</p>' +
+                '<p style="color:#667781;">Use the code below to reset your password. It expires in <b>10 minutes</b>.</p>' +
+                '<div style="font-size:32px;font-weight:700;letter-spacing:6px;background:#e7fce3;color:#008069;padding:18px;text-align:center;border-radius:12px;margin:20px 0;">' + otp + '</div>' +
+                '<p style="color:#8696a0;font-size:13px;">If you did not request this, ignore this email.</p>' +
+                '</div>'
+        };
+
+        await mailer.sendMail(mail);
+        res.json({ ok: true, sentTo: maskEmail(user.backupEmail) });
+    } catch (err) {
+        console.error('OTP request failed:', err);
+        res.status(500).json({ error: 'Could not send code. Try again later.' });
+    }
+});
+
+// Step 2: Verify OTP + set new password
+app.post('/api/forgot-password/verify', async (req, res) => {
+    try {
+        const { identifier, otp, newPassword } = req.body;
+        if (!identifier || !otp || !newPassword) return res.status(400).json({ error: 'Missing fields' });
+        if (newPassword.length < 4) return res.status(400).json({ error: 'Password too short' });
+
+        const user = await User.findOne({ identifier });
+        if (!user) return res.status(400).json({ error: 'Invalid code' });
+        if (!user.otpHash || !user.otpExpiry) return res.status(400).json({ error: 'No code requested' });
+        if (user.otpExpiry.getTime() < Date.now()) return res.status(400).json({ error: 'Code expired — request a new one' });
+        if (user.otpAttempts >= OTP_MAX_ATTEMPTS) return res.status(400).json({ error: 'Too many attempts — request a new code' });
+
+        const ok = await bcrypt.compare(String(otp).trim(), user.otpHash);
+        if (!ok) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            await user.save();
+            return res.status(400).json({ error: 'Invalid code' });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.otpHash = null;
+        user.otpExpiry = null;
+        user.otpAttempts = 0;
+        await user.save();
+
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- OTP PASSWORD RESET ----------
+
+app.post('/api/forgot-password/request', async (req, res) => {
+    try {
+        const { identifier } = req.body;
+        if (!identifier) return res.status(400).json({ error: 'Missing identifier' });
+
+        const user = await User.findOne({ identifier });
+        if (!user) return res.json({ ok: true, sentTo: null, generic: true });
+
+        if (!user.backupEmail) {
+            return res.status(400).json({ error: 'No backup email on file for this account' });
+        }
+
+        const lastSent = lastOtpSentAt.get(String(user._id)) || 0;
+        if (Date.now() - lastSent < OTP_RATE_WINDOW) {
+            const wait = Math.ceil((OTP_RATE_WINDOW - (Date.now() - lastSent)) / 1000);
+            return res.status(429).json({ error: 'Please wait ' + wait + 's before requesting a new code' });
+        }
+
+        const otp = generateOtp();
+        user.otpHash = await bcrypt.hash(otp, 10);
+        user.otpExpiry = new Date(Date.now() + OTP_TTL_MS);
+        user.otpAttempts = 0;
+        await user.save();
+        lastOtpSentAt.set(String(user._id), Date.now());
+
+        await mailer.sendMail({
+            from: '"WhatsApp Clone" <' + process.env.GMAIL_USER + '>',
+            to: user.backupEmail,
+            subject: 'Your password reset code',
+            text:
+                'Hi ' + user.name + ',\n\n' +
+                'Your password reset code is: ' + otp + '\n\n' +
+                'This code expires in 10 minutes. If you did not request this, ignore this email.\n\n' +
+                '— WhatsApp Clone',
+            html:
+                '<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;">' +
+                '<h2 style="color:#111b21;">Password reset</h2>' +
+                '<p style="color:#667781;">Hi ' + user.name + ',</p>' +
+                '<p style="color:#667781;">Use the code below to reset your password. Expires in <b>10 minutes</b>.</p>' +
+                '<div style="font-size:32px;font-weight:700;letter-spacing:6px;background:#e7fce3;color:#008069;padding:18px;text-align:center;border-radius:12px;margin:20px 0;">' + otp + '</div>' +
+                '<p style="color:#8696a0;font-size:13px;">If you did not request this, ignore this email.</p>' +
+                '</div>'
+        });
+
+        res.json({ ok: true, sentTo: maskEmail(user.backupEmail) });
+    } catch (err) {
+        console.error('OTP request failed:', err);
+        res.status(500).json({ error: 'Could not send code. Try again later.' });
+    }
+});
+
+app.post('/api/forgot-password/verify', async (req, res) => {
+    try {
+        const { identifier, otp, newPassword } = req.body;
+        if (!identifier || !otp || !newPassword) return res.status(400).json({ error: 'Missing fields' });
+        if (newPassword.length < 4) return res.status(400).json({ error: 'Password too short' });
+
+        const user = await User.findOne({ identifier });
+        if (!user) return res.status(400).json({ error: 'Invalid code' });
+        if (!user.otpHash || !user.otpExpiry) return res.status(400).json({ error: 'No code requested' });
+        if (user.otpExpiry.getTime() < Date.now()) return res.status(400).json({ error: 'Code expired — request a new one' });
+        if (user.otpAttempts >= OTP_MAX_ATTEMPTS) return res.status(400).json({ error: 'Too many attempts — request a new code' });
+
+        const ok = await bcrypt.compare(String(otp).trim(), user.otpHash);
+        if (!ok) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            await user.save();
+            return res.status(400).json({ error: 'Invalid code' });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.otpHash = null;
+        user.otpExpiry = null;
+        user.otpAttempts = 0;
+        await user.save();
+
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/login', async (req, res) => {
@@ -393,8 +597,30 @@ app.post('/api/fcm-token', async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
     try {
-        const list = await User.find({}, { password: 0 }).sort({ name: 1 });
-        res.json(list);
+        const list = await User.find({}, { password: 0 }).sort({ name: 1 }).lean();
+        const allPrefs = await UserPrefs.find({ userId: { $in: list.map(u => String(u._id)) } }).lean();
+        const prefsMap = {};
+        allPrefs.forEach(p => { prefsMap[p.userId] = p; });
+
+        const out = list.map(u => {
+            const p = prefsMap[String(u._id)] || {};
+            const privacy = p.privacy || {};
+            const hideLastSeen   = privacy.lastSeen === 'nobody';
+            const hidePhoto      = privacy.profilePhoto === 'nobody';
+            const hideAbout      = privacy.about === 'nobody';
+            return {
+                _id: u._id,
+                identifier: u.identifier,
+                name: u.name,
+                avatarUrl: hidePhoto ? null : u.avatarUrl,
+                about:     hideAbout ? null : (u.about || null),
+                lastSeen:  hideLastSeen ? null : u.lastSeen,
+                hideLastSeen,
+                hidePhoto,
+                hideAbout
+            };
+        });
+        res.json(out);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -563,9 +789,18 @@ app.post('/api/qr/scan', async (req, res) => {
 // ---------- SOCKET.IO ----------
 const onlineUsers = new Map();
 
-function broadcastOnline() {
+async function broadcastOnline() {
     const uniqueUserIds = [...new Set(onlineUsers.values())];
-    io.emit('onlineUsers', uniqueUserIds);
+    try {
+        const hidden = await UserPrefs.find({
+            userId: { $in: uniqueUserIds },
+            'privacy.lastSeen': 'nobody'
+        }).select('userId').lean();
+        const hiddenSet = new Set(hidden.map(p => p.userId));
+        io.emit('onlineUsers', uniqueUserIds.filter(id => !hiddenSet.has(id)));
+    } catch(e) {
+        io.emit('onlineUsers', uniqueUserIds);
+    }
 }
 
 io.on('connection', (socket) => {
@@ -605,6 +840,7 @@ io.on('connection', (socket) => {
                 text:      data.text || '',
                 mediaUrl:  data.mediaUrl || null,
                 mediaType: data.mediaType || null,
+                viewOnce:  data.viewOnce || false,
                 replyTo:   data.replyTo || null,
                 expiresAt: data.expiresAt || null
             });
