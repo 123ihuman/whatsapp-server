@@ -51,7 +51,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 
-const GOOGLE_CLIENT_ID = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = 'const GOOGLE_CLIENT_ID = '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com';.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET;
