@@ -1777,9 +1777,9 @@
             <div class="input-wrapper">
                 <i class="far fa-smile" onclick="toggleEmojiPicker(event)" style="cursor:pointer;"></i>
                 <input type="text" id="chatInput" placeholder="Message">
-                <i class="fas fa-camera" onclick="document.getElementById('chatFileInput').click()" title="Camera"></i>
+                <i class="fas fa-camera" onclick="openCamera()" title="Camera"></i>
                 <i class="fas fa-paperclip" onclick="openAttachSheet()" title="Attach" style="cursor:pointer;"></i>
-                <input type="file" id="chatFileInput" accept="image/*,video/*" style="display:none" onchange="sendMediaFile(event)">
+                <input type="file" id="chatFileInput" accept="image/*,video/*" capture="environment" style="display:none" onchange="sendMediaFile(event)">
             </div>
                         <button class="send-btn" id="sendBtn" onclick="sendSimMessage()" style="display:none;">
                 <i class="fas fa-paper-plane"></i>
@@ -6089,6 +6089,38 @@ socket.on('messagesRead', (data) => {
             });
         })();
 
-    </script>
+    /* ==== MISSING FUNCTIONS PATCH ==== */
+function attachContact() {
+  closeAttachSheet();
+  if (!activeRoomId) return alert('Open a chat first');
+  (async () => {
+    try {
+      const res = await fetch('/api/users');
+      const users = await res.json();
+      const others = users.filter(u => u._id !== getMyId());
+      if (others.length === 0) return alert('No contacts');
+      const list = others.map((u,i) => (i+1)+'. '+u.name+' ('+u.identifier+')').join('\n');
+      const pick = prompt('Send which contact?\n\n'+list+'\n\nEnter number:');
+      const idx = parseInt(pick) - 1;
+      if (isNaN(idx) || !others[idx]) return;
+      const c = others[idx];
+      socket.emit('sendMessage', {
+        roomId: activeRoomId,
+        sender: getMyId(),
+        senderName: getMyName(),
+        text: '👤 Contact: ' + c.name + '\n' + c.identifier
+      });
+    } catch(e) { alert('Failed to load contacts'); }
+  })();
+}
+
+// extra safety — make sure body click doesn't swallow attach items
+document.addEventListener('click', function(e){
+  const item = e.target.closest('.attach-item');
+  if (!item) return;
+  // attach sheet is already handling clicks via onclick
+});
+/* ==== END PATCH ==== */
+</script>
 </body>
 </html>
