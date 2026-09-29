@@ -1029,6 +1029,114 @@
   margin-top: 20px;
   min-height: 18px;
 }
+/* ================= SEND TO WHATSAPP SHEET ================= */
+.wa-sheet {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 10000;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.wa-sheet.active { display: flex; }
+.wa-inner {
+  background: #fff; border-radius: 20px;
+  padding: 26px 22px; max-width: 380px; width: 100%;
+}
+.wa-title { font-size: 20px; font-weight: 600; color: #111b21; margin-bottom: 6px; }
+.wa-sub { font-size: 13px; color: #667781; margin-bottom: 16px; }
+.wa-inner input, .wa-inner textarea {
+  width: 100%; padding: 13px 16px; margin-bottom: 10px;
+  border: 1px solid #ddd; border-radius: 8px;
+  font-size: 15px; outline: none; font-family: inherit; resize: none;
+}
+.wa-inner input:focus, .wa-inner textarea:focus { border-color: #00a884; }
+.wa-send {
+  display: block; width: 100%;
+  background: #00a884; color: #fff;
+  border: none; border-radius: 24px;
+  padding: 14px; font-size: 16px; font-weight: 600;
+  cursor: pointer; margin-top: 6px;
+}
+.wa-send:hover { background: #008069; }
+.wa-cancel {
+  display: block; width: 100%;
+  background: transparent; color: #00a884;
+  border: none; padding: 14px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+}
+
+/* ================= WHATSAPP CONTACT PICKER ================= */
+.wa-pick-btn {
+  display: block; width: 100%;
+  background: #e7fce3; color: #008069;
+  border: 1px solid #00a884;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; margin-bottom: 10px;
+}
+.wa-pick-btn:active { background: #d3f6cb; }
+
+.wa-picker {
+  position: fixed; inset: 0;
+  background: #fff;
+  z-index: 10100;
+  display: none;
+  flex-direction: column;
+}
+.wa-picker.active { display: flex; }
+.wa-picker-head {
+  display: flex; align-items: center; gap: 15px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 18px; font-weight: 600;
+  color: #111b21;
+}
+.wa-picker-head i { font-size: 22px; cursor: pointer; }
+.wa-picker-body {
+  flex-grow: 1; overflow-y: auto;
+  padding-bottom: 40px;
+}
+.wa-contact {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px; cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+}
+.wa-contact:active { background: #f5f6f6; }
+.wa-contact .wa-av {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #00a884; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 600; flex-shrink: 0;
+  overflow: hidden;
+}
+.wa-contact .wa-av img { width: 100%; height: 100%; object-fit: cover; }
+.wa-contact .wa-info { flex-grow: 1; min-width: 0; }
+.wa-contact .wa-name {
+  font-size: 16px; color: #111b21;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wa-contact .wa-num {
+  font-size: 13px; color: #667781;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wa-picker-section {
+  padding: 14px 20px 6px;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #00a884;
+  background: #f7f8fa;
+}
+.wa-picker-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #8696a0;
+  font-size: 14px;
+}
+
 /* ================= FORGOT PASSWORD SHEET ================= */
 .forgot-sheet {
   position: fixed; inset: 0;
@@ -1453,6 +1561,7 @@
 <div class="menu-item" onclick="closeChatMenu();closeChatWindow()">Close chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Send call link')">Send call link</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('New group call')">New group call</div>
+<div class="menu-item" onclick="closeChatMenu();openWhatsAppSheet()">Send to WhatsApp</div>
 <div class="menu-item" onclick="closeChatMenu();togglePin()" id="pinMenuItem">Pin chat</div>
 <div class="menu-item" onclick="closeChatMenu();toggleArchive()" id="archiveMenuItem">Archive chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Report')">Report</div>
@@ -2210,6 +2319,29 @@
 </div>
 
 <!-- ================= FORGOT PASSWORD (OTP) ================= -->
+<!-- ================= SEND TO WHATSAPP SHEET ================= -->
+<div class="wa-sheet" id="waSheet" onclick="if(event.target===this)closeWhatsAppSheet()">
+  <div class="wa-inner">
+    <div class="wa-title">Send to WhatsApp</div>
+    <div class="wa-sub">Message any number on WhatsApp</div>
+        <input type="tel" id="waPhone" placeholder="Country code + number (e.g. 919876543210)">
+    <button class="wa-pick-btn" onclick="openWAContactPicker()">📞 Pick from contacts</button>
+    <textarea id="waText" placeholder="Message…" rows="3"></textarea>
+    <div id="waError" style="color:#e74c3c;font-size:13px;min-height:18px;text-align:center;"></div>
+    <button class="wa-send" id="waSendBtn" onclick="sendWhatsAppFromApp()">Send</button>
+    <button class="wa-cancel" onclick="closeWhatsAppSheet()">Cancel</button>
+  </div>
+</div>
+
+<!-- ================= WHATSAPP CONTACT PICKER ================= -->
+<div class="wa-picker" id="waPicker">
+  <div class="wa-picker-head">
+    <i class="fas fa-arrow-left" onclick="closeWAContactPicker()"></i>
+    <div>Pick a contact</div>
+  </div>
+  <div class="wa-picker-body" id="waPickerList"></div>
+</div>
+
 <div class="forgot-sheet" id="forgotSheet" onclick="if(event.target===this)closeForgotPassword()">
   <div class="forgot-inner">
 
@@ -3413,6 +3545,261 @@ window.addEventListener('load', () => {
     google.accounts.id.initialize({ client_id: '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com', callback: handleGoogleLogin });
   }
 });
+/* ================= FORGOT PASSWORD (OTP) ================= */
+function openForgotPassword() {
+    document.getElementById('fpStep1').style.display = 'block';
+    document.getElementById('fpStep2').style.display = 'none';
+    document.getElementById('fpError1').innerText = '';
+    document.getElementById('fpError2').innerText = '';
+    document.getElementById('fpIdentifier').value = '';
+    document.getElementById('fpOtp').value = '';
+    document.getElementById('fpNewPassword').value = '';
+    document.getElementById('fpNewPassword2').value = '';
+    document.getElementById('forgotSheet').classList.add('active');
+}
+
+function closeForgotPassword() {
+    document.getElementById('forgotSheet').classList.remove('active');
+}
+
+/* ================= SEND TO WHATSAPP ================= */
+function openWhatsAppSheet() {
+    document.getElementById('waPhone').value = '';
+    document.getElementById('waText').value = '';
+    document.getElementById('waError').innerText = '';
+    document.getElementById('waSendBtn').disabled = false;
+    document.getElementById('waSendBtn').innerText = 'Send';
+
+    // Prefill phone if the current chat peer's identifier looks like a phone number
+    if (activeChatUserId) {
+        fetch('/api/users').then(r => r.json()).then(users => {
+            const peer = users.find(u => u._id === activeChatUserId);
+            if (peer && peer.identifier) {
+                const digits = String(peer.identifier).replace(/\D/g, '');
+                if (digits.length >= 8) document.getElementById('waPhone').value = digits;
+            }
+        }).catch(() => {});
+    }
+
+    document.getElementById('waSheet').classList.add('active');
+}
+
+function closeWhatsAppSheet() {
+    document.getElementById('waSheet').classList.remove('active');
+}
+
+/* ================= WHATSAPP CONTACT PICKER ================= */
+async function openWAContactPicker() {
+  const picker = document.getElementById('waPicker');
+  const list = document.getElementById('waPickerList');
+  list.innerHTML = '<div class="wa-picker-empty">Loading…</div>';
+  picker.classList.add('active');
+
+  // Load app users + phone contacts in parallel
+  let appUsers = [];
+  let phoneContacts = [];
+  try {
+    const r = await fetch('/api/users');
+    appUsers = await r.json();
+  } catch(e) {}
+  try {
+    phoneContacts = await getPhoneContacts();
+  } catch(e) {}
+
+  list.innerHTML = '';
+  let added = 0;
+
+  // --- Section 1: app users with phone-number identifiers ---
+  const meId = getMyId();
+  const appOthers = appUsers.filter(u => u._id !== meId);
+  const appWithPhone = appOthers.filter(u => {
+    const num = String(u.identifier || '').replace(/\D/g, '');
+    return num.length >= 8;
+  });
+
+  if (appWithPhone.length > 0) {
+    const h = document.createElement('div');
+    h.className = 'wa-picker-section';
+    h.textContent = 'App users';
+    list.appendChild(h);
+
+    appWithPhone.forEach(u => {
+      const num = String(u.identifier).replace(/\D/g, '');
+      const el = document.createElement('div');
+      el.className = 'wa-contact';
+      const initial = u.name ? u.name.charAt(0).toUpperCase() : '?';
+      const av = u.avatarUrl ? '<img src="' + u.avatarUrl + '">' : initial;
+      el.innerHTML =
+        '<div class="wa-av">' + av + '</div>' +
+        '<div class="wa-info">' +
+          '<div class="wa-name">' + u.name + '</div>' +
+          '<div class="wa-num">' + num + '</div>' +
+        '</div>';
+      el.onclick = () => selectWAContact(num);
+      list.appendChild(el);
+      added++;
+    });
+  }
+
+  // --- Section 2: phone contacts ---
+  if (phoneContacts.length > 0) {
+    const validContacts = phoneContacts.filter(c => {
+      const phone = (c.phones && c.phones[0]) || '';
+      return phone && phone.replace(/\D/g,'').length >= 8;
+    }).slice(0, 200);
+
+    if (validContacts.length > 0) {
+      const h = document.createElement('div');
+      h.className = 'wa-picker-section';
+      h.textContent = 'Phone contacts';
+      list.appendChild(h);
+
+      validContacts.forEach(c => {
+        const phone = c.phones[0];
+        const el = document.createElement('div');
+        el.className = 'wa-contact';
+        const initial = c.name ? c.name.charAt(0).toUpperCase() : '?';
+        el.innerHTML =
+          '<div class="wa-av">' + initial + '</div>' +
+          '<div class="wa-info">' +
+            '<div class="wa-name">' + (c.name || 'Unknown') + '</div>' +
+            '<div class="wa-num">' + phone + '</div>' +
+          '</div>';
+        el.onclick = () => selectWAContact(phone);
+        list.appendChild(el);
+        added++;
+      });
+    }
+  }
+
+  if (added === 0) {
+    list.innerHTML = '<div class="wa-picker-empty">No contacts available.<br><br>Type a number instead.</div>';
+  }
+}
+
+function closeWAContactPicker() {
+  document.getElementById('waPicker').classList.remove('active');
+}
+
+function selectWAContact(phone) {
+  let digits = String(phone).replace(/\D/g, '');
+  // Auto-prepend 91 for 10-digit numbers (India default)
+  if (digits.length === 10) digits = '91' + digits;
+  document.getElementById('waPhone').value = digits;
+  closeWAContactPicker();
+  document.getElementById('waText').focus();
+}
+
+
+async function sendWhatsAppFromApp() {
+    const phone = document.getElementById('waPhone').value.trim();
+    const text  = document.getElementById('waText').value.trim();
+    const err   = document.getElementById('waError');
+    err.innerText = '';
+
+    if (!phone || !text) return err.innerText = 'Fill phone and message';
+
+    const btn = document.getElementById('waSendBtn');
+    btn.disabled = true;
+    btn.innerText = 'Sending…';
+
+    try {
+        const res = await fetch('/api/send-whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, text })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            err.innerText = data.error || 'Failed';
+            btn.disabled = false;
+            btn.innerText = 'Send';
+            return;
+        }
+        alert('Sent to WhatsApp ✓');
+        closeWhatsAppSheet();
+    } catch (e) {
+        err.innerText = 'Network error';
+        btn.disabled = false;
+        btn.innerText = 'Send';
+    }
+}
+
+
+function backToFpStep1() {
+    document.getElementById('fpStep2').style.display = 'none';
+    document.getElementById('fpStep1').style.display = 'block';
+    document.getElementById('fpError1').innerText = '';
+}
+
+async function requestOtp() {
+    const identifier = document.getElementById('fpIdentifier').value.trim();
+    const err = document.getElementById('fpError1');
+    err.innerText = '';
+    if (!identifier) return err.innerText = 'Enter your phone or email';
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = 'Sending…';
+
+    try {
+        const res = await fetch('/api/forgot-password/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            err.innerText = data.error || 'Failed';
+            btn.disabled = false; btn.innerText = 'Send code';
+            return;
+        }
+        document.getElementById('fpStep1').style.display = 'none';
+        document.getElementById('fpStep2').style.display = 'block';
+        document.getElementById('fpSentTo').innerText =
+            data.sentTo ? ('Code sent to ' + data.sentTo) : 'If an account exists, a code has been sent.';
+    } catch (e) {
+        err.innerText = 'Network error';
+        btn.disabled = false; btn.innerText = 'Send code';
+    }
+}
+
+async function verifyOtpAndReset() {
+    const identifier = document.getElementById('fpIdentifier').value.trim();
+    const otp = document.getElementById('fpOtp').value.trim();
+    const pw1 = document.getElementById('fpNewPassword').value;
+    const pw2 = document.getElementById('fpNewPassword2').value;
+    const err = document.getElementById('fpError2');
+    err.innerText = '';
+
+    if (!otp || otp.length !== 6) return err.innerText = 'Enter the 6-digit code';
+    if (!pw1) return err.innerText = 'Enter a new password';
+    if (pw1 !== pw2) return err.innerText = 'Passwords do not match';
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = 'Resetting…';
+
+    try {
+        const res = await fetch('/api/forgot-password/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, otp, newPassword: pw1 })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            err.innerText = data.error || 'Failed';
+            btn.disabled = false; btn.innerText = 'Reset password';
+            return;
+        }
+        alert('Password reset. Sign in with your new password.');
+        closeForgotPassword();
+    } catch (e) {
+        err.innerText = 'Network error';
+        btn.disabled = false; btn.innerText = 'Reset password';
+    }
+}
+
 async function doAuth() {
     const identifier = document.getElementById('authIdentifier').value.trim();
     const name = document.getElementById('authName').value.trim();
@@ -4123,7 +4510,7 @@ async function loadCalls() {
                     <i class="fas fa-phone-alt" style="cursor:pointer;margin-right:10px;" onclick="event.stopPropagation();redial('audio','${otherId}','${otherName.replace(/'/g,"\\'")}')" title="Voice call"></i>
                     <i class="fas fa-video" style="cursor:pointer;color:#00a884;" onclick="event.stopPropagation();redial('video','${otherId}','${otherName.replace(/'/g,"\\'")}')" title="Video call"></i>
                 </div>`;
-            el.onclick = () => redial('audio','${otherId}','${otherName.replace(/'/g,"\\'")}');
+            el.onclick = () => redial('audio', otherId, otherName);
             list.appendChild(el);
         });
     } catch (e) {

@@ -20,6 +20,7 @@ try {
     console.warn('⚠️ Firebase Admin init failed:', e.message);
 }
 const nodemailer = require('nodemailer');
+const { sendWhatsAppMessage, isWhatsAppReady } = require('./whatsapp-service');
 
 // Gmail SMTP transporter — uses App Password (not your Gmail password)
 const mailer = nodemailer.createTransport({
@@ -600,6 +601,23 @@ app.post('/api/fcm-token', async (req, res) => {
         console.log('✅ FCM token saved for user', userId);
         res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- SEND VIA WHATSAPP ----------
+app.post('/api/send-whatsapp', async (req, res) => {
+    try {
+        const { phone, text } = req.body;
+        if (!phone || !text) return res.status(400).json({ error: 'Missing phone or text' });
+        const result = await sendWhatsAppMessage(phone, text);
+        if (!result.ok) return res.status(500).json({ error: result.error });
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/whatsapp-status', (req, res) => {
+    res.json({ ready: isWhatsAppReady() });
 });
 
 app.get('/api/users', async (req, res) => {
