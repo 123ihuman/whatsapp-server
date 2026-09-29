@@ -2237,8 +2237,7 @@
 <div class="emoji-grid" id="emojiGrid"></div>
 </div>
 
-    <!-- Reaction bar -->
-        <!-- Reaction bar -->
+       <!-- Reaction bar -->
     <div class="reaction-bar" id="statusReactionBar">
         <div class="reaction-btn" data-emoji="❤️" onclick="sendStatusReaction('❤️', this)">❤️</div>
         <div class="reaction-btn" data-emoji="🔥" onclick="sendStatusReaction('🔥', this)">🔥</div>
@@ -2258,6 +2257,9 @@
             <div class="status-emoji-grid" id="statusEmojiGrid"></div>
         </div>
     </div>
+</div>
+<!-- ===== END of statusViewer ===== -->
+
 <div id="qrScannerScreen" style="position:fixed; inset:0; background:#000; z-index:9999; display:none; flex-direction:column;">
     <div style="padding:15px; color:white; display:flex; align-items:center;">
         <i class="fas fa-arrow-left" onclick="closeQrScanner()" style="font-size:24px; cursor:pointer;"></i>
@@ -2265,15 +2267,8 @@
     </div>
     <div id="qr-reader" style="flex-grow:1;"></div>
 </div>
-<!-- ================= MESSAGE ACTION SHEET ================= -->
-<div class="msg-actions-sheet" id="msgActionsSheet" onclick="if(event.target===this)closeMsgActions()">
-  <div class="msg-actions-inner">
-    <div class="msg-actions-quote" id="msgActionsQuote"></div>
-    <div class="msg-actions-list" id="msgActionsList"></div>
-  </div>
-</div>
 
-<!-- ================= MEDIA CAPTION SHEET ================= -->
+<!-- ================= MESSAGE ACTION SHEET ================= -->
 <div class="media-caption-sheet" id="mediaCaptionSheet" onclick="if(event.target===this)closeMediaCaption()">
   <div class="media-caption-inner">
     <div class="media-caption-preview" id="mediaCaptionPreview"></div>
