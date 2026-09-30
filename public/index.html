@@ -1603,6 +1603,7 @@
 <div class="avatar" id="giAvatar" style="width:130px;height:130px;margin:0 auto 15px;font-size:50px;background:#00a884;overflow:hidden;">G</div>
 <div id="giName" style="font-size:24px;font-weight:500;color:#111b21;"></div>
 <div id="giCount" style="color:#667781;font-size:14px;margin-top:6px;"></div>
+<div id="giDescription" style="font-size:15px;color:#111b21;margin-top:10px;padding:0 20px;"></div>
 </div>
 <div class="settings-list" style="margin-bottom:12px;">
 <div class="settings-row" id="giChangeIconBtn" onclick="changeGroupIcon()" style="display:none;">
@@ -1617,6 +1618,7 @@
 <div class="settings-section-title">Members</div>
 <div id="giMembersList"></div>
 <div style="padding:16px;">
+<button class="settings-cta" id="giEditDescBtn" onclick="editGroupDescription()" style="display:none;margin:8px auto;background:#54656f;">Edit description</button>
 <button class="settings-cta" id="giAddMemberBtn" onclick="openAddMemberPicker()" style="display:none;margin:8px auto;">Add member</button>
 <button class="settings-cta" id="giExitBtn" onclick="exitGroup()" style="display:none;margin:8px auto;background:#e74c3c;">Exit group</button>
 </div>
@@ -1745,7 +1747,7 @@
 <div id="selectContactList"></div>
 </div>
 <div class="chat-window" id="chatWindow">
-        <div class="chat-window-header" onclick="if(event.target.id==='chatName'||event.target.id==='chatAvatar')openContactInfo()">
+        <div class="chat-window-header" onclick="if(event.target.id==='chatName'||event.target.id==='chatAvatar'){ if(activeRoomId && activeRoomId.startsWith('group_')) openGroupInfo(); else openContactInfo(); }">
             <i class="fas fa-arrow-left" onclick="closeChatWindow()"></i>
             <div class="avatar" id="chatAvatar">R</div>
             <div class="name" id="chatName">Rahul
@@ -2913,7 +2915,8 @@ async function openChatWindow(name, userId) {
         }
     });
 
-        activeChatUserId = userId;
+            activeChatUserId = userId;
+    // Groups: room ID is the group ID itself. 1-on-1: sorted pair.
     activeRoomId = String(userId).startsWith('group_') ? userId : makeRoomId(getMyId(), userId);
     await loadPrefs();
     if ((prefs.blocked || []).includes(userId)) {
@@ -5277,6 +5280,7 @@ async function openGroupInfo() {
 
     document.getElementById('giName').innerText = g.name || activeChatName;
     document.getElementById('giCount').innerText = (g.members || []).length + ' members';
+document.getElementById('giDescription').innerText = g.description || '';
 
     const av = document.getElementById('giAvatar');
     if (g.icon) av.innerHTML = '<img src="' + g.icon + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
@@ -5287,37 +5291,51 @@ async function openGroupInfo() {
     const ur = await fetch('/api/users');
     const users = await ur.json();
     (g.members || []).forEach(mid => {
-      const u = users.find(x => x._id === mid);
-      const name = u ? u.name : 'User';
-      const identifier = u ? u.identifier : '';
-      const isTheAdmin = (g.admins || []).includes(mid);
-      const isMe = mid === getMyId();
-      const el = document.createElement('div');
-      el.className = 'contact-list-item';
-      el.innerHTML =
-        '<div class="avatar" style="background:#00a884;">' +
-          (u && u.avatarUrl ? '<img src="' + u.avatarUrl + '">' : name.charAt(0).toUpperCase()) +
-        '</div>' +
-        '<div style="flex-grow:1;"><div class="name">' + name + (isMe ? ' (You)' : '') +
-          (isTheAdmin ? ' <span style="background:#e7fce3;color:#008069;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Admin</span>' : '') +
-        '</div><div class="status">' + identifier + '</div></div>' +
-        (isAdmin && !isMe ? '<button class="btn-green" style="padding:6px 12px;font-size:13px;background:#e74c3c;" onclick="removeGroupMember(\'' + mid + '\')">Remove</button>' : '');
-      ml.appendChild(el);
-    });
+  const u = users.find(x => x._id === mid);
+  const name = u ? u.name : 'User';
+  const identifier = u ? u.identifier : '';
+  const isTheAdmin = (g.admins || []).includes(mid);
+  const isMe = mid === getMyId();
+  const el = document.createElement('div');
+  el.className = 'contact-list-item';
+  el.innerHTML =
+    '<div class="avatar" style="background:#00a884;">' +
+      (u && u.avatarUrl ? '<img src="' + u.avatarUrl + '">' : name.charAt(0).toUpperCase()) +
+    '</div>' +
+    '<div style="flex-grow:1;"><div class="name">' + name + (isMe ? ' (You)' : '') + '</div>' +
+    '<div class="status">' + identifier + '</div></div>' +
+    (isTheAdmin ? '<span style="background:#e7fce3;color:#008069;padding:4px 10px;border-radius:10px;font-size:11px;font-weight:600;margin-right:6px;">Group Admin</span>' : '') +
+    (isAdmin && !isMe ? '<button class="btn-green" style="padding:6px 10px;font-size:12px;background:' + (isTheAdmin ? '#e74c3c' : '#00a884') + ';margin-right:6px;" onclick="toggleGroupRole(\'' + mid + '\',' + (!isTheAdmin) + ')">' + (isTheAdmin ? 'Demote' : 'Promote') + '</button>' : '') +
+    (isAdmin && !isMe ? '<button class="btn-green" style="padding:6px 10px;font-size:12px;background:#e74c3c;" onclick="removeGroupMember(\'' + mid + '\')">Remove</button>' : '');
+  ml.appendChild(el);
+});
 
     const addBtn = document.getElementById('giAddMemberBtn');
     const renameBtn = document.getElementById('giRenameBtn');
     const iconBtn = document.getElementById('giChangeIconBtn');
+const descBtn = document.getElementById('giEditDescBtn');
     const exitBtn = document.getElementById('giExitBtn');
     if (addBtn) addBtn.style.display = isAdmin ? 'block' : 'none';
     if (renameBtn) renameBtn.style.display = isAdmin ? 'block' : 'none';
     if (iconBtn) iconBtn.style.display = isAdmin ? 'block' : 'none';
+if (descBtn) descBtn.style.display = isAdmin ? 'block' : 'none';
     if (exitBtn) exitBtn.style.display = isMember ? 'block' : 'none';
   } catch (e) { console.warn('openGroupInfo failed', e); }
 }
 
 function closeGroupInfo() { document.getElementById('groupInfoScreen').classList.remove('active'); }
 
+async function toggleGroupRole(userId, makeAdmin) {
+  const role = makeAdmin ? 'admin' : 'member';
+  const r = await fetch('/api/groups/setRole', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId: activeGroupId, userId, role, requesterId: getMyId() })
+  });
+  const j = await r.json();
+  if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
+  openGroupInfo();
+}
 async function removeGroupMember(userId) {
   if (!confirm('Remove this member from the group?')) return;
   const r = await fetch('/api/groups/removeMember', {
@@ -5341,6 +5359,20 @@ async function exitGroup() {
   closeChatWindow();
 }
 
+async function editGroupDescription() {
+  if (!activeGroupId) return;
+  const current = (activeGroupData && activeGroupData.description) || '';
+  const next = prompt('Group description (max 200 chars):', current);
+  if (next === null) return;
+  const r = await fetch('/api/groups/setDescription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId: activeGroupId, description: next.trim(), requesterId: getMyId() })
+  });
+  const j = await r.json();
+  if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
+  openGroupInfo();
+}
 async function renameGroup() {
   const current = activeGroupData ? activeGroupData.name : activeChatName;
   const next = prompt('Group name:', current);
