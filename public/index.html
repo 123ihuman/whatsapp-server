@@ -2033,7 +2033,11 @@
                 <i class="fas fa-ellipsis-v" onclick="workInProgress('More')"></i>
             </div>
             <div class="settings-list">
-                <div class="settings-row">
+                <div class="settings-row" onclick="toggleSoundMute()">
+    <div class="settings-row-text">In-app sounds<br><span class="settings-sub" id="soundMuteSub">On</span></div>
+    <div class="toggle on" id="soundMuteToggle"><i class="fas fa-check"></i></div>
+</div>
+<div class="settings-row">
                     <div class="settings-row-text">Conversation tones<br><span class="settings-sub">Play sounds for incoming and outgoing messages.</span></div>
                     <div class="toggle on"><i class="fas fa-check"></i></div>
                 </div>
@@ -2619,8 +2623,30 @@ async function createGroupFromScreen() {
   }
 }
     
-    function playSendSound() {
-        initAudio();
+    /* ============ SOUND MUTE ============ */
+function isSoundMuted() {
+    return localStorage.getItem('wa_sound_muted') === '1';
+}
+function applySoundMuteUI() {
+    const t = document.getElementById('soundMuteToggle');
+    if (!t) return;
+    const muted = isSoundMuted();
+    t.className = 'toggle ' + (muted ? 'off' : 'on');
+    t.innerHTML = muted
+        ? '<i class="fas fa-minus"></i>'
+        : '<i class="fas fa-check"></i>';
+    const sub = document.getElementById('soundMuteSub');
+    if (sub) sub.innerText = muted ? 'Muted' : 'On';
+}
+function toggleSoundMute() {
+    const next = isSoundMuted() ? '0' : '1';
+    localStorage.setItem('wa_sound_muted', next);
+    applySoundMuteUI();
+}
+/* ============ END SOUND MUTE ============ */
+function playSendSound() {
+    if (isSoundMuted()) return;              // 👈 add this
+    initAudio();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -2635,7 +2661,8 @@ async function createGroupFromScreen() {
     }
 
     function playReceiveSound() {
-        initAudio();
+    if (isSoundMuted()) return;              // 👈 add this
+    initAudio();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -2650,7 +2677,8 @@ async function createGroupFromScreen() {
     }
 
     function playClickSound() {
-        initAudio();
+    if (isSoundMuted()) return;              // 👈 add this
+    initAudio();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -5745,6 +5773,7 @@ function applyFontSize(v) {
   document.head.appendChild(style);
 }
 (function initPrefs() {
+    applySoundMuteUI();
   const t = localStorage.getItem('wa_theme');
   if (t) { const th = APP_THEMES.find(x => x.name === t); if (th) setTimeout(() => applyAppTheme(th.bg), 100); }
   const f = localStorage.getItem('wa_font');
