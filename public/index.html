@@ -1298,6 +1298,25 @@
     text-align: center; color: #111b21;
 }
 .ng-name-input::placeholder { color: #8696a0; }
+/* ============ SWIPE TO REPLY ============ */
+.msg { touch-action: pan-y; }
+.msg.swiping { transition: none !important; }
+.msg .swipe-reply-icon {
+    position: absolute;
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: #00a884;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+.msg .swipe-reply-icon.visible { opacity: 1; }
 /* ============ CHAT SELECTION MODE ============ */
 .action-bar {
     position: absolute;
@@ -6483,25 +6502,6 @@ function applyUnreadToChats() {
     } else if (b) b.remove();
   });
 }
-/* ============ SWIPE TO REPLY ============ */
-.msg { touch-action: pan-y; }
-.msg.swiping { transition: none !important; }
-.msg .swipe-reply-icon {
-    position: absolute;
-    left: -40px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    background: #00a884;
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s;
-}
-.msg .swipe-reply-icon.visible { opacity: 1; }
 /* ============ CHAT SELECTION MODE ============ */
 let chatsSelectionMode = false;
 let selectedChats = [];     // array of { roomId, name, userId }
