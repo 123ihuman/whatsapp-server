@@ -1739,6 +1739,9 @@
 </div>
 <div class="settings-section-title">Members</div>
 <div id="giMembersList"></div>
+<div id="giSeeAll" style="display:none;padding:12px 20px;">
+    <span onclick="toggleGroupMembersView()" style="color:#00a884;font-weight:500;font-size:15px;cursor:pointer;" id="giSeeAllText">See all</span>
+</div>
 <div style="padding:16px;">
 <button class="settings-cta" id="giEditDescBtn" onclick="editGroupDescription()" style="display:none;margin:8px auto;background:#54656f;">Edit description</button>
 <button class="settings-cta" id="giAddMemberBtn" onclick="openAddMemberPicker()" style="display:none;margin:8px auto;">Add member</button>
@@ -5617,7 +5620,11 @@ document.getElementById('giDescription').innerText = g.description || '';
     ml.innerHTML = '';
     const ur = await fetch('/api/users');
     const users = await ur.json();
-    (g.members || []).forEach(mid => {
+    // Show first 5 by default, keep the rest hidden unless expanded
+    const PREVIEW_COUNT = 5;
+    const showAll = window.__groupMembersExpanded === true;
+    const visibleMembers = showAll ? g.members : g.members.slice(0, PREVIEW_COUNT);
+        (visibleMembers || []).forEach(mid => {
   const u = users.find(x => x._id === mid);
   const name = u ? u.name : 'User';
   const identifier = u ? u.identifier : '';
@@ -5636,6 +5643,21 @@ document.getElementById('giDescription').innerText = g.description || '';
     (isAdmin && !isMe ? '<button class="btn-green" style="padding:6px 10px;font-size:12px;background:#e74c3c;" onclick="removeGroupMember(\'' + mid + '\')">Remove</button>' : '');
   ml.appendChild(el);
 });
+    // "See all (N more)" link
+    const seeAll = document.getElementById('giSeeAll');
+    const seeAllText = document.getElementById('giSeeAllText');
+    if (seeAll && seeAllText) {
+        if (g.members.length > PREVIEW_COUNT) {
+            seeAll.style.display = 'block';
+            if (window.__groupMembersExpanded === true) {
+                seeAllText.innerText = 'Show fewer';
+            } else {
+                seeAllText.innerText = 'See all (' + (g.members.length - PREVIEW_COUNT) + ' more)';
+            }
+        } else {
+            seeAll.style.display = 'none';
+        }
+    }
 
     const addBtn = document.getElementById('giAddMemberBtn');
     const renameBtn = document.getElementById('giRenameBtn');
@@ -5650,7 +5672,14 @@ if (descBtn) descBtn.style.display = isAdmin ? 'block' : 'none';
   } catch (e) { console.warn('openGroupInfo failed', e); }
 }
 
-function closeGroupInfo() { document.getElementById('groupInfoScreen').classList.remove('active'); }
+function toggleGroupMembersView() {
+    window.__groupMembersExpanded = !window.__groupMembersExpanded;
+    openGroupInfo();
+}
+function closeGroupInfo() {
+    document.getElementById('groupInfoScreen').classList.remove('active');
+    window.__groupMembersExpanded = false;
+}
 
 async function toggleGroupRole(userId, makeAdmin) {
   const role = makeAdmin ? 'admin' : 'member';
