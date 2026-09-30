@@ -1665,7 +1665,7 @@
     <div id="ngStep1">
         <div class="ng-hint">Contacts on WhatsApp</div>
         <div id="groupContactList" class="ng-list"></div>
-        <button class="ng-next" onclick="goToGroupNameStep()" title="Next">
+        <button class="ng-next" onclick="ngAddMode ? confirmAddMembers() : goToGroupNameStep()" title="Next">
             <i class="fas fa-arrow-right"></i>
         </button>
     </div>
@@ -2790,6 +2790,7 @@ function toggleGroupMember(el, member) {
     }
 }
 
+let ngAddMode = false;
 function openNewGroupScreen() {
     selectedGroupMembers = [];
     document.getElementById('ngStep1').style.display = 'block';
@@ -2801,10 +2802,83 @@ function openNewGroupScreen() {
 
 function closeNewGroupScreen() {
     document.getElementById('newGroupScreen').classList.remove('active');
+    document.querySelector('#newGroupScreen .ng-title').innerText = 'New group';
     selectedGroupMembers = [];
     document.getElementById('groupName').value = '';
+    ngAddMode = false;
 }
 
+function openAddMemberScreen() {
+    if (!activeGroupId) return;
+    ngAddMode = true;
+    selectedGroupMembers = [];
+    document.getElementById('ngStep1').style.display = 'block';
+    document.getElementById('ngStep2').style.display = 'none';
+    document.querySelector('#newGroupScreen .ng-title').innerText = 'Add members';
+    document.getElementById('newGroupScreen').classList.add('active');
+    loadGroupContactPickerForAdd();
+}
+
+async function loadGroupContactPickerForAdd() {
+    const c = document.getElementById('groupContactList');
+    c.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">Loading…</div>';
+
+    let appUsers = [];
+    try {
+        const r = await fetch('/api/users');
+        appUsers = await r.json();
+    } catch(e) {}
+
+    // Exclude current members
+    let currentMembers = [];
+    try {
+        const g = await fetch('/api/groups/info/' + activeGroupId).then(r => r.json());
+        currentMembers = (g.members || []);
+    } catch(e) {}
+
+    const others = appUsers.filter(x => x._id !== getMyId() && !currentMembers.includes(x._id));
+    c.innerHTML = '';
+
+    if (others.length === 0) {
+        c.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">Everyone is already in this group</div>';
+        return;
+    }
+
+    others.forEach(x => {
+        const el = document.createElement('div');
+        el.className = 'ng-item';
+        el.dataset.uid  = x._id;
+        el.dataset.name = x.name || '';
+        el.dataset.sub  = x.identifier || '';
+        el.innerHTML =
+            '<div class="avatar" style="background:#00a884;">' +
+                (x.avatarUrl ? '<img src="' + x.avatarUrl + '">' : (x.name || '?').charAt(0).toUpperCase()) +
+            '</div>' +
+            '<div class="ng-info">' +
+                '<div class="ng-name">' + (x.name || '') + '</div>' +
+                '<div class="ng-sub">' + (x.identifier || '') + '</div>' +
+            '</div>' +
+            '<div class="ng-circle"></div>';
+        el.onclick = () => toggleGroupMember(el, { id: x._id, name: x.name });
+        c.appendChild(el);
+    });
+}
+
+async function confirmAddMembers() {
+    if (selectedGroupMembers.length === 0) return alert('Pick at least 1 member');
+    for (const m of selectedGroupMembers) {
+        try {
+            await fetch('/api/groups/addMember', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groupId: activeGroupId, userId: m.id, requesterId: getMyId() })
+            });
+        } catch(e) {}
+    }
+    ngAddMode = false;
+    closeNewGroupScreen();
+    openGroupInfo();
+}
 function goToGroupNameStep() {
     if (selectedGroupMembers.length === 0) return alert('Pick at least 1 member');
     document.getElementById('ngStep1').style.display = 'none';
@@ -5639,24 +5713,8 @@ function changeGroupIcon() {
 }
 
 async function openAddMemberPicker() {
-  if (!activeGroupId) return;
-  const ur = await fetch('/api/users');
-  const users = await ur.json();
-  const currentMembers = (activeGroupData && activeGroupData.members) || [];
-  const others = users.filter(u => u._id !== getMyId() && !currentMembers.includes(u._id));
-  if (others.length === 0) return alert('No one left to add');
-  const names = others.map((u, i) => (i + 1) + '. ' + u.name).join('\n');
-  const pick = prompt('Add which member?\n\n' + names + '\n\nEnter number:');
-  const idx = parseInt(pick) - 1;
-  if (isNaN(idx) || !others[idx]) return;
-  const r = await fetch('/api/groups/addMember', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ groupId: activeGroupId, userId: others[idx]._id, requesterId: getMyId() })
-  });
-  const j = await r.json();
-  if (!r.ok) return alert('Failed: ' + (j.error || 'unknown'));
-  openGroupInfo();
+    if (!activeGroupId) return;
+    openAddMemberScreen();
 }
 function openDisappearingPicker() { document.getElementById('disappearingPicker').classList.add('active'); }
 function closeDisappearingPicker() { document.getElementById('disappearingPicker').classList.remove('active'); }
