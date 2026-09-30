@@ -6065,6 +6065,32 @@ if (archivedRows.length > 0) {
     } catch (err) {
         console.warn('loadContacts failed:', err);
     }
+        // ============ LOAD GROUPS ============
+        try {
+            const gr = await fetch('/api/groups/' + getMyId());
+            const groups = await gr.json();
+            (groups || []).forEach(g => {
+                const groupItem = document.createElement('div');
+                groupItem.className = 'chat-item';
+                groupItem.dataset.roomId = g.groupId;
+                groupItem.dataset.group = '1';
+
+                const av = g.icon
+                    ? '<img src="' + g.icon + '" alt="">'
+                    : 'G';
+
+                groupItem.innerHTML = `
+                    <div class="avatar" style="background:#00a884;">${av}</div>
+                    <div class="chat-details">
+                        <div class="chat-row-1"><span class="chat-name">${g.name}</span></div>
+                        <div class="chat-row-2"><span class="chat-msg">${g.members.length} members</span></div>
+                    </div>`;
+
+                groupItem.onclick = () => openChatWindow(g.name, g.groupId);
+                chatList.appendChild(groupItem);
+            });
+        } catch (e) { console.warn('load groups failed', e); }
+        // ============ END LOAD GROUPS ============
 }
 socket.on('chatCleared',(d)=>{if(d.roomId===activeRoomId)document.getElementById('messagesArea').innerHTML='';});
 socket.on('messagesRead', (data) => {
