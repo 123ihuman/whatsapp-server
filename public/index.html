@@ -2486,8 +2486,12 @@ let onlineUserIds = [];
 
 socket.on('connect', () => {
     console.log('✅ Socket connected. My ID:', socket.id);
-    // If already logged in, tell the server we're online
     if (currentUser) socket.emit('userOnline', currentUser.id);
+    // Rejoin the currently open chat room on (re)connect
+    if (typeof activeRoomId !== 'undefined' && activeRoomId) {
+        socket.emit('joinChat', activeRoomId);
+        console.log('🔄 Rejoined room:', activeRoomId);
+    }
 });
 async function showQrForLinking() {
     // Clear any old QR code
