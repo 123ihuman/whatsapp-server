@@ -2913,8 +2913,8 @@ async function openChatWindow(name, userId) {
         }
     });
 
-    activeChatUserId = userId;
-    activeRoomId = makeRoomId(getMyId(), userId);
+        activeChatUserId = userId;
+    activeRoomId = String(userId).startsWith('group_') ? userId : makeRoomId(getMyId(), userId);
     await loadPrefs();
     if ((prefs.blocked || []).includes(userId)) {
         setTimeout(() => alert(activeChatName + ' is blocked. Unblock from the ⋮ menu to continue.'), 100);
@@ -2976,7 +2976,31 @@ async function openChatWindow(name, userId) {
     if (unreadData.rooms[activeRoomId]) {
         unreadData.rooms[activeRoomId] = 0;
         unreadData.total = Math.max(0, unreadData.total - 1);
-        refreshUnread();
+            // ===== Group header enrichment =====
+    if (String(userId).startsWith('group_')) {
+        fetch('/api/groups/info/' + userId)
+            .then(r => r.json())
+            .then(g => {
+                if (!g || !g.members) return;
+                const nameEl = document.getElementById('chatName');
+                if (nameEl) nameEl.innerText = g.name;
+                // Show member names beneath the group name
+                fetch('/api/users').then(r => r.json()).then(users => {
+                    const names = g.members
+                        .map(id => {
+                            const u = users.find(x => x._id === id);
+                            return u ? u.name.split(' ')[0] : 'User';
+                        })
+                        .slice(0, 4)
+                        .join(', ');
+                    const more = g.members.length > 4 ? ' +' + (g.members.length - 4) : '';
+                    nameEl.innerHTML = g.name + '<br><span style="font-size:12px;color:#667781;font-weight:400;">' +
+                        names + more + '</span>';
+                }).catch(() => {});
+            }).catch(() => {});
+    }
+    // ===== End group header enrichment =====
+refreshUnread();
     }
     document.getElementById('groupInfoMenuItem').style.display =
         userId && String(userId).startsWith('group_') ? 'block' : 'none';
