@@ -6065,8 +6065,10 @@ if (archivedRows.length > 0) {
     } catch (err) {
         console.warn('loadContacts failed:', err);
     }
-        // ============ LOAD GROUPS ============
+                // ============ LOAD GROUPS ============
         try {
+            const chatList = document.getElementById('chatList');
+            if (!chatList) return;
             const gr = await fetch('/api/groups/' + getMyId());
             const groups = await gr.json();
             (groups || []).forEach(g => {
