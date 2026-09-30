@@ -3463,7 +3463,56 @@ const edt = m.edited ? ' <span class="msg-edited">(edited)</span>' : '';
 div.innerHTML = fwd + replyHtml + bodyHtml + '<span class="msg-time">' + time + edt + ' ' + tick + '</span>';
 renderReactions(div, m.reactions);
 
-        // Long-press (mobile) + right-click (desktop) → WhatsApp-style menu
+            // ============ SWIPE RIGHT TO REPLY ============
+    (function attachSwipeReply() {
+        let startX = 0, startY = 0, dx = 0, active = false;
+
+        // Reply icon behind the bubble
+        const icon = document.createElement('div');
+        icon.className = 'swipe-reply-icon';
+        icon.innerHTML = '<i class="fas fa-reply"></i>';
+        div.appendChild(icon);
+
+        const onStart = (x, y) => {
+            startX = x; startY = y; dx = 0; active = true;
+            div.classList.add('swiping');
+        };
+        const onMove = (x, y) => {
+            if (!active) return;
+            dx = x - startX;
+            const dy = y - startY;
+            if (Math.abs(dy) > Math.abs(dx)) { active = false; div.classList.remove('swiping'); return; }
+            if (dx < 0) dx = 0;
+            if (dx > 80) dx = 80;
+            div.style.transform = 'translateX(' + dx + 'px)';
+            icon.classList.toggle('visible', dx > 40);
+        };
+        const onEnd = () => {
+            if (!active) return;
+            active = false;
+            div.classList.remove('swiping');
+            div.style.transform = '';
+            icon.classList.remove('visible');
+            if (dx > 60) {
+                const isMine = m.sender === getMyId();
+                const preview = m.text || (m.mediaType ? '(' + m.mediaType + ')' : '(message)');
+                replyToMessage(m._id, isMine ? 'You' : (m.senderName || 'Them'), preview);
+            }
+            dx = 0;
+        };
+
+        div.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+        div.addEventListener('touchmove',  (e) => onMove(e.touches[0].clientX, e.touches[0].clientY),  { passive: true });
+        div.addEventListener('touchend',   onEnd);
+        div.addEventListener('touchcancel',onEnd);
+
+        div.addEventListener('mousedown', (e) => onStart(e.clientX, e.clientY));
+        div.addEventListener('mousemove', (e) => { if (active) onMove(e.clientX, e.clientY); });
+        div.addEventListener('mouseup',   onEnd);
+        div.addEventListener('mouseleave', onEnd);
+    })();
+    // ============ END SWIPE TO REPLY ============
+// Long-press (mobile) + right-click (desktop) → WhatsApp-style menu
     let pressTimer = null, pressX = 0, pressY = 0;
     div.addEventListener('touchstart', (e) => {
         if (m.deleted) return;
@@ -6434,6 +6483,25 @@ function applyUnreadToChats() {
     } else if (b) b.remove();
   });
 }
+/* ============ SWIPE TO REPLY ============ */
+.msg { touch-action: pan-y; }
+.msg.swiping { transition: none !important; }
+.msg .swipe-reply-icon {
+    position: absolute;
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: #00a884;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+.msg .swipe-reply-icon.visible { opacity: 1; }
 /* ============ CHAT SELECTION MODE ============ */
 let chatsSelectionMode = false;
 let selectedChats = [];     // array of { roomId, name, userId }
@@ -6643,6 +6711,116 @@ if (archivedRows.length > 0) {
         } catch (e) { console.warn('load groups failed', e); }
         // ============ END LOAD GROUPS ============
 }
+/* ============ ANDROID BACK BUTTON / EDGE SWIPE ============ */
+(function initBackButton() {
+    if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
+    const App = window.Capacitor.Plugins.App;
+
+    App.addListener('backButton', () => {
+        // 1. Close any open modal / sheet first (in priority order)
+        if (document.getElementById('mediaCaptionSheet').classList.contains('active')) {
+            return closeMediaCaption();
+        }
+        if (document.getElementById('msgActionsSheet').classList.contains('active')) {
+            return closeMsgActions();
+        }
+        if (document.getElementById('privacySheet').classList.contains('active')) {
+            return closePrivacyPicker();
+        }
+        if (document.getElementById('pinSheet').classList.contains('active')) {
+            return cancelPinEntry();
+        }
+        if (document.getElementById('attachSheet').classList.contains('active')) {
+            return closeAttachSheet();
+        }
+        if (document.getElementById('statusEmojiPicker').classList.contains('active')) {
+            return closeStatusEmojiPicker();
+        }
+        if (document.getElementById('emojiPicker').classList.contains('active')) {
+            return document.getElementById('emojiPicker').classList.remove('active');
+        }
+        if (document.getElementById('reactionPicker').classList.contains('active')) {
+            return closeReactionPicker();
+        }
+        if (document.getElementById('waSheet').classList.contains('active')) {
+            return closeWhatsAppSheet();
+        }
+        if (document.getElementById('waPicker').classList.contains('active')) {
+            return closeWAContactPicker();
+        }
+        if (document.getElementById('forgotSheet').classList.contains('active')) {
+            return closeForgotPassword();
+        }
+        if (document.getElementById('statusViewer').classList.contains('active')) {
+            return closeStatusViewer();
+        }
+        if (document.getElementById('locationScreen').classList.contains('active')) {
+            return closeLocationScreen();
+        }
+        if (document.getElementById('liveDurationOverlay').classList.contains('active')) {
+            return closeLiveDurationPicker();
+        }
+        if (document.getElementById('cameraOverlay').classList.contains('active')) {
+            return closeCamera();
+        }
+        if (document.getElementById('qrScannerScreen').style.display === 'flex') {
+            return closeQrScanner();
+        }
+
+        // 2. Selection mode
+        if (typeof chatsSelectionMode !== 'undefined' && chatsSelectionMode) {
+            return exitChatsSelectionMode();
+        }
+
+        // 3. Standalone screens (contact info, group info, settings, etc.)
+        if (document.getElementById('newGroupScreen').classList.contains('active')) {
+            return closeNewGroupScreen();
+        }
+        if (document.getElementById('contactInfoScreen').classList.contains('active')) {
+            return closeContactInfo();
+        }
+        if (document.getElementById('groupInfoScreen').classList.contains('active')) {
+            return closeGroupInfo();
+        }
+        if (document.getElementById('disappearingPicker').classList.contains('active')) {
+            return closeDisappearingPicker();
+        }
+        if (document.getElementById('broadcastPicker').classList.contains('active')) {
+            return closeBroadcastPicker();
+        }
+        if (document.getElementById('starredScreen').classList.contains('active')) {
+            return closeStarredScreen();
+        }
+        if (document.getElementById('blockedScreen').classList.contains('active')) {
+            return closeBlockedScreen();
+        }
+        if (document.getElementById('settingsScreen').classList.contains('active')) {
+            return closeSettings();
+        }
+
+        // 4. Contact picker
+        if (document.getElementById('selectContactScreen').style.display === 'block') {
+            return closeSelectContact();
+        }
+
+        // 5. Chat window open → close it back to chat list
+        if (document.getElementById('chatWindow').style.display === 'flex') {
+            return closeChatWindow();
+        }
+
+        // 6. Three-dot menu open → close it
+        if (document.getElementById('threeDotMenu').style.display === 'block') {
+            return closeDrawer();
+        }
+        if (document.getElementById('chatMenu').classList.contains('active')) {
+            return closeChatMenu();
+        }
+
+        // 7. On home screen → exit the app
+        App.exitApp();
+    });
+})();
+/* ============ END BACK BUTTON ============ */
 socket.on('chatCleared',(d)=>{if(d.roomId===activeRoomId)document.getElementById('messagesArea').innerHTML='';});
 socket.on('messagesRead', (data) => {
     if (data.roomId !== activeRoomId) return;
