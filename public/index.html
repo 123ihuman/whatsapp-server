@@ -1203,6 +1203,22 @@
     display: flex; align-items: center; justify-content: center;
 }
 .camera-cancel:hover, .camera-switch:hover { background: rgba(255,255,255,0.3); }
+/* ============ SYSTEM MESSAGES ============ */
+.sys-msg {
+    clear: both;
+    display: table;
+    margin: 10px auto;
+    padding: 6px 14px;
+    background: #ffffff;
+    color: #54656f;
+    font-size: 12.5px;
+    font-weight: 500;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+    max-width: 80%;
+    line-height: 1.3;
+}
 /* ============ NEW GROUP SCREEN ============ */
 .new-group-screen {
     position: absolute; top: 0; left: 0;
@@ -3311,6 +3327,16 @@ refreshUnread();
 }
 function renderMessage(m) {
     const area = document.getElementById('messagesArea');
+    // System messages (e.g. "X added Y") render as centered grey pills
+    if (m.system) {
+        const sys = document.createElement('div');
+        sys.className = 'sys-msg';
+        sys.dataset.msgId = m._id;
+        sys.innerText = m.text;
+        area.appendChild(sys);
+        area.scrollTop = area.scrollHeight;
+        return;
+    }
     const isMine = m.sender === getMyId();
     if (!isMine && (prefs.blocked || []).includes(m.sender)) return;
     const time = new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

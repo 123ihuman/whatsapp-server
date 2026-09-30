@@ -690,6 +690,21 @@ app.get('/api/calls/:userId', async (req, res) => {
     }
 });
 
+// Post a system message to a group room (e.g. "X added Y")
+async function postSystemMessage(groupId, text) {
+  try {
+    const msg = await Message.create({
+      roomId: groupId,
+      sender: 'system',
+      senderName: 'System',
+      text,
+      system: true,
+      read: true
+    });
+    io.to(groupId).emit('newMessage', msg);
+    return msg;
+  } catch (e) { console.warn('system message failed', e); }
+}
 app.post('/api/groups', async (req, res) => {
   try {
     const { name, members, createdBy } = req.body;
@@ -703,15 +718,17 @@ app.post('/api/groups', async (req, res) => {
       createdBy
     });
     io.emit('groupCreated', { groupId: gid, name, members: g.members, admins: g.admins });
+
+    // System message — inside the route, before res.json
+    const creator = await User.findById(createdBy).catch(() => null);
+    await postSystemMessage(
+      gid,
+      (creator ? creator.name : 'Someone') + ' created this group'
+    );
+
     res.json(g);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
-app.get('/api/groups/:userId', async (req, res) => {
-  try { const list = await Group.find({ members: req.params.userId }); res.json(list); }
-  catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 app.get('/api/groups/info/:groupId', async (req, res) => {
   try { const g = await Group.findOne({ groupId: req.params.groupId }); res.json(g || {}); }
   catch (e) { res.status(500).json({ error: e.message }); }
@@ -732,7 +749,14 @@ app.post('/api/groups/setRole', async (req, res) => {
       await Group.updateOne({ groupId }, { $pull: { admins: userId } });
     }
     io.emit('groupUpdated', { groupId });
-    res.json({ ok: true });
+        const actor = await User.findById(requesterId).catch(() => null);
+    const target = await User.findById(userId).catch(() => null);
+    await postSystemMessage(
+      groupId,
+      (actor ? actor.name : 'Someone') + (role === 'admin' ? ' made ' : ' removed ') +
+      (target ? target.name : 'a member') + (role === 'admin' ? ' an admin' : ' as admin')
+    );
+res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/groups/addMember', async (req, res) => {
@@ -743,7 +767,13 @@ app.post('/api/groups/addMember', async (req, res) => {
     if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can add members' });
     await Group.updateOne({ groupId }, { $addToSet: { members: userId } });
     io.emit('groupUpdated', { groupId });
-    res.json({ ok: true });
+        const adder = await User.findById(requesterId).catch(() => null);
+    const added = await User.findById(userId).catch(() => null);
+    await postSystemMessage(
+      groupId,
+      (adder ? adder.name : 'Someone') + ' added ' + (added ? added.name : 'a member')
+    );
+res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -755,7 +785,13 @@ app.post('/api/groups/removeMember', async (req, res) => {
     if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can remove members' });
     await Group.updateOne({ groupId }, { $pull: { members: userId, admins: userId } });
     io.emit('groupUpdated', { groupId });
-    res.json({ ok: true });
+        const remover = await User.findById(requesterId).catch(() => null);
+    const removed = await User.findById(userId).catch(() => null);
+    await postSystemMessage(
+      groupId,
+      (remover ? remover.name : 'Someone') + ' removed ' + (removed ? removed.name : 'a member')
+    );
+res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -782,7 +818,12 @@ app.post('/api/groups/rename', async (req, res) => {
     if (!g.admins.includes(requesterId)) return res.status(403).json({ error: 'Only admins can rename' });
     await Group.updateOne({ groupId }, { $set: { name } });
     io.emit('groupUpdated', { groupId });
-    res.json({ ok: true });
+        const renamer = await User.findById(requesterId).catch(() => null);
+    await postSystemMessage(
+      groupId,
+      (renamer ? renamer.name : 'Someone') + ' changed the subject to "' + name + '"'
+    );
+res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
