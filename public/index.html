@@ -1203,6 +1203,85 @@
     display: flex; align-items: center; justify-content: center;
 }
 .camera-cancel:hover, .camera-switch:hover { background: rgba(255,255,255,0.3); }
+/* ============ NEW GROUP SCREEN ============ */
+.new-group-screen {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%; background: #fff;
+    z-index: 3100; display: none; flex-direction: column; overflow: hidden;
+}
+.new-group-screen.active { display: flex; }
+
+.ng-topbar {
+    display: flex; align-items: center; gap: 20px;
+    padding: 16px 20px; border-bottom: 1px solid #e0e0e0;
+}
+.ng-topbar i { font-size: 22px; color: #111b21; cursor: pointer; }
+.ng-title { flex-grow: 1; font-size: 20px; font-weight: 600; color: #111b21; }
+
+.ng-search {
+    display: flex; align-items: center; gap: 12px;
+    background: #f0f2f5; margin: 12px 15px;
+    padding: 10px 16px; border-radius: 24px;
+}
+.ng-search i { color: #54656f; font-size: 16px; }
+.ng-search input { flex-grow: 1; border: none; background: transparent; outline: none; font-size: 15px; }
+
+.ng-hint { padding: 8px 20px; font-size: 13px; color: #667781; }
+
+.ng-list { flex-grow: 1; overflow-y: auto; padding-bottom: 100px; }
+
+.ng-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px; cursor: pointer;
+}
+.ng-item:active { background: #f5f6f6; }
+.ng-item .avatar { width: 46px; height: 46px; font-size: 18px; margin: 0; }
+.ng-item .ng-info { flex-grow: 1; min-width: 0; }
+.ng-item .ng-name { font-size: 16px; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ng-item .ng-sub { font-size: 13px; color: #667781; }
+
+.ng-circle {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid #8696a0; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+}
+.ng-item.selected .ng-circle {
+    background: #00a884; border-color: #00a884;
+}
+.ng-item.selected .ng-circle::after {
+    content: ''; width: 10px; height: 6px;
+    border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(1px, -2px);
+}
+
+.ng-next, .ng-create {
+    position: absolute; bottom: 24px; right: 20px;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #00a884; color: #fff; border: none;
+    font-size: 22px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center;
+}
+.ng-next:active, .ng-create:active { transform: scale(0.94); }
+
+.ng-avatar-row {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 30px 20px 20px; gap: 16px;
+}
+.ng-group-avatar {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: #00a884; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; cursor: pointer;
+}
+.ng-name-input {
+    width: 100%; max-width: 320px; border: none;
+    border-bottom: 2px solid #00a884;
+    padding: 10px 4px; font-size: 18px; outline: none;
+    text-align: center; color: #111b21;
+}
+.ng-name-input::placeholder { color: #8696a0; }
 /* ============ DRAWER DOT ============ */
 .settings-dot {
     display: inline-block;
@@ -1571,11 +1650,38 @@
 <div class="menu-item" onclick="closeChatMenu();deleteChat()">Delete chat</div>
 </div>
 <div class="new-group-screen" id="newGroupScreen">
-<div class="select-header"><i class="fas fa-arrow-left" onclick="closeNewGroupScreen()"></i><div>New group</div></div>
-<div style="padding:20px;"><input type="text" id="groupName" placeholder="Group name" style="width:100%;padding:14px;border:1px solid #ddd;border-radius:8px;font-size:16px;"></div>
-<div class="contact-header">Select members</div>
-<div id="groupContactList"></div>
-<button class="settings-cta" onclick="createGroupFromScreen()">Create group</button>
+    <div class="ng-topbar">
+        <i class="fas fa-arrow-left" onclick="closeNewGroupScreen()"></i>
+        <div class="ng-title">New group</div>
+        <i class="fas fa-search" onclick="workInProgress('Search')"></i>
+    </div>
+
+    <div class="ng-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Name, number, @username" oninput="filterNewGroupContacts(this.value)">
+    </div>
+
+    <!-- Step 1: pick members -->
+    <div id="ngStep1">
+        <div class="ng-hint">Contacts on WhatsApp</div>
+        <div id="groupContactList" class="ng-list"></div>
+        <button class="ng-next" onclick="goToGroupNameStep()" title="Next">
+            <i class="fas fa-arrow-right"></i>
+        </button>
+    </div>
+
+    <!-- Step 2: name the group -->
+    <div id="ngStep2" style="display:none;">
+        <div class="ng-avatar-row">
+            <div class="ng-group-avatar" id="ngGroupAvatar"><i class="fas fa-camera"></i></div>
+            <input type="text" id="groupName" placeholder="Group name" class="ng-name-input">
+        </div>
+        <div class="ng-hint" id="ngSelectedCount">0 of 1024 selected</div>
+        <div id="ngSelectedList" class="ng-list"></div>
+        <button class="ng-create" onclick="createGroupFromScreen()">
+            <i class="fas fa-check"></i>
+        </button>
+    </div>
 </div>
 <div class="contact-info-screen" id="contactInfoScreen">
 <div class="select-header"><i class="fas fa-arrow-left" onclick="closeContactInfo()"></i><div>Contact info</div></div>
@@ -2589,40 +2695,161 @@ function voiceNoteNotReady() {
     alert('Voice messages coming soon. Type to send text.');
 }
 function createNewGroup() {
-    const groupName = prompt('Enter a name for the group:');
-    if (!groupName) return;
-    const groupId = 'group_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    // Open chat window with this group name + group ID
     closeSelectContact();
-    openChatWindow(groupName, groupId);
+    openNewGroupScreen();
 }
 function openNewGroupScreen(){document.getElementById('newGroupScreen').classList.add('active');loadGroupContactPicker();}
 function closeNewGroupScreen(){document.getElementById('newGroupScreen').classList.remove('active');selectedGroupMembers=[];document.getElementById('groupName').value='';}
-let selectedGroupMembers=[];
-async function loadGroupContactPicker(){const r=await fetch('/api/users');const u=await r.json();const c=document.getElementById('groupContactList');c.innerHTML='';u.filter(x=>x._id!==getMyId()).forEach(x=>{const d=document.createElement('div');d.className='contact-list-item';d.dataset.uid=x._id;d.innerHTML=`<div class="avatar" style="background:#00a884;">${x.avatarUrl?`<img src="${x.avatarUrl}">`:x.name.charAt(0).toUpperCase()}</div><div><div class="name">${x.name}</div><div class="status">${x.identifier}</div></div>`;d.onclick=()=>{d.classList.toggle('selected');if(d.classList.contains('selected'))selectedGroupMembers.push({id:x._id,name:x.name});else selectedGroupMembers=selectedGroupMembers.filter(m=>m.id!==x._id);};c.appendChild(d);});}
-async function createGroupFromScreen() {
-  const name = document.getElementById('groupName').value.trim();
-  if (!name) return alert('Enter group name');
-  if (selectedGroupMembers.length < 1) return alert('Pick at least 1 member');
-  try {
-    const res = await fetch('/api/groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        members: selectedGroupMembers.map(m => m.id),
-        createdBy: getMyId()
-      })
+let selectedGroupMembers = [];
+
+function filterNewGroupContacts(q) {
+    q = (q || '').trim().toLowerCase();
+    document.querySelectorAll('#groupContactList .ng-item').forEach(el => {
+        const name = (el.dataset.name || '').toLowerCase();
+        const sub  = (el.dataset.sub  || '').toLowerCase();
+        el.style.display = (!q || name.includes(q) || sub.includes(q)) ? '' : 'none';
     });
-    const g = await res.json();
-    if (!res.ok) return alert('Failed: ' + (g.error || 'unknown'));
+}
+
+async function loadGroupContactPicker() {
+    const c = document.getElementById('groupContactList');
+    c.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">Loading…</div>';
+
+    let appUsers = [];
+    try {
+        const r = await fetch('/api/users');
+        appUsers = await r.json();
+    } catch(e) {}
+
+    let phoneContacts = [];
+    try { phoneContacts = await getPhoneContacts(); } catch(e) {}
+
+    const others = appUsers.filter(x => x._id !== getMyId());
+    c.innerHTML = '';
+
+    // App users first
+    others.forEach(x => {
+        const el = document.createElement('div');
+        el.className = 'ng-item';
+        el.dataset.uid  = x._id;
+        el.dataset.name = x.name || '';
+        el.dataset.sub  = x.identifier || '';
+        el.innerHTML =
+            '<div class="avatar" style="background:#00a884;">' +
+                (x.avatarUrl ? '<img src="' + x.avatarUrl + '">' : (x.name || '?').charAt(0).toUpperCase()) +
+            '</div>' +
+            '<div class="ng-info">' +
+                '<div class="ng-name">' + (x.name || '') + '</div>' +
+                '<div class="ng-sub">' + (x.identifier || '') + '</div>' +
+            '</div>' +
+            '<div class="ng-circle"></div>';
+        el.onclick = () => toggleGroupMember(el, { id: x._id, name: x.name });
+        c.appendChild(el);
+    });
+
+    // Phone contacts (non-registered) — invite-style but selectable for later
+    if (phoneContacts.length) {
+        const h = document.createElement('div');
+        h.className = 'ng-hint';
+        h.textContent = 'Phone contacts';
+        c.appendChild(h);
+
+        phoneContacts.slice(0, 200).forEach(pc => {
+            const num = (pc.phones && pc.phones[0]) || '';
+            if (!num) return;
+            const el = document.createElement('div');
+            el.className = 'ng-item';
+            el.dataset.uid  = 'phone_' + num;
+            el.dataset.name = pc.name || '';
+            el.dataset.sub  = num;
+            el.innerHTML =
+                '<div class="avatar" style="background:#8696a0;">' +
+                    (pc.name ? pc.name.charAt(0).toUpperCase() : '?') +
+                '</div>' +
+                '<div class="ng-info">' +
+                    '<div class="ng-name">' + (pc.name || 'Unknown') + '</div>' +
+                    '<div class="ng-sub">' + num + '</div>' +
+                '</div>' +
+                '<div class="ng-circle"></div>';
+            el.onclick = () => toggleGroupMember(el, { id: 'phone_' + num, name: pc.name, phone: num });
+            c.appendChild(el);
+        });
+    }
+
+    if (c.children.length === 0) {
+        c.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">No contacts</div>';
+    }
+}
+
+function toggleGroupMember(el, member) {
+    el.classList.toggle('selected');
+    if (el.classList.contains('selected')) {
+        selectedGroupMembers.push(member);
+    } else {
+        selectedGroupMembers = selectedGroupMembers.filter(m => m.id !== member.id);
+    }
+}
+
+function openNewGroupScreen() {
+    selectedGroupMembers = [];
+    document.getElementById('ngStep1').style.display = 'block';
+    document.getElementById('ngStep2').style.display = 'none';
+    document.getElementById('groupName').value = '';
+    document.getElementById('newGroupScreen').classList.add('active');
+    loadGroupContactPicker();
+}
+
+function closeNewGroupScreen() {
+    document.getElementById('newGroupScreen').classList.remove('active');
     selectedGroupMembers = [];
     document.getElementById('groupName').value = '';
-    closeNewGroupScreen();
-    openChatWindow(g.name, g.groupId);
-  } catch (e) {
-    alert('Failed to create group: ' + e.message);
-  }
+}
+
+function goToGroupNameStep() {
+    if (selectedGroupMembers.length === 0) return alert('Pick at least 1 member');
+    document.getElementById('ngStep1').style.display = 'none';
+    document.getElementById('ngStep2').style.display = 'block';
+    document.getElementById('ngSelectedCount').innerText = selectedGroupMembers.length + ' of 1024 selected';
+    const list = document.getElementById('ngSelectedList');
+    list.innerHTML = '';
+    selectedGroupMembers.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'ng-item selected';
+        el.innerHTML =
+            '<div class="avatar" style="background:#00a884;">' + (m.name || '?').charAt(0).toUpperCase() + '</div>' +
+            '<div class="ng-info"><div class="ng-name">' + (m.name || '') + '</div></div>' +
+            '<div class="ng-circle"></div>';
+        list.appendChild(el);
+    });
+    document.getElementById('groupName').focus();
+}
+
+async function createGroupFromScreen() {
+    const name = document.getElementById('groupName').value.trim();
+    if (!name) return alert('Enter group name');
+    if (selectedGroupMembers.length === 0) return alert('Pick at least 1 member');
+
+    // Only registered users can be added (phone_ prefix would need invite)
+    const memberIds = selectedGroupMembers
+        .filter(m => !String(m.id).startsWith('phone_'))
+        .map(m => m.id);
+
+    if (memberIds.length === 0) return alert('None of the selected contacts are on the app yet');
+
+    try {
+        const res = await fetch('/api/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, members: memberIds, createdBy: getMyId() })
+        });
+        const g = await res.json();
+        if (!res.ok) return alert('Failed: ' + (g.error || 'unknown'));
+        closeNewGroupScreen();
+        loadContacts();
+        openChatWindow(g.name, g.groupId);
+    } catch (e) {
+        alert('Failed: ' + e.message);
+    }
 }
     
     /* ============ SOUND MUTE ============ */
