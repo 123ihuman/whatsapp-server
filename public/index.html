@@ -1298,6 +1298,45 @@
     text-align: center; color: #111b21;
 }
 .ng-name-input::placeholder { color: #8696a0; }
+/* ============ CHAT SELECTION MODE ============ */
+.action-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    background: #00a884;
+    color: #fff;
+    display: none;
+    align-items: center;
+    padding: 0 15px;
+    z-index: 2500;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.action-bar.active { display: flex; }
+.action-bar > i {
+    font-size: 22px;
+    cursor: pointer;
+    padding: 8px;
+}
+.action-bar > span {
+    flex-grow: 1;
+    font-size: 20px;
+    font-weight: 600;
+    margin-left: 12px;
+}
+.action-bar .action-icons {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+}
+.action-bar .action-icons i {
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px;
+}
+.action-bar .action-icons i:active { transform: scale(0.9); }
+.chat-item.selected {
+    background: #e7fce3 !important;
+}
 /* ============ DRAWER DOT ============ */
 .settings-dot {
     display: inline-block;
@@ -1784,12 +1823,23 @@
     </div>
 
     <div class="screen active" id="chatsScreen">
-        <div class="header">
+                <div class="header" id="chatsHeader">
             <div class="logo"><span id="logoText">WhatsApp</span></div>
             <div class="header-actions">
                 <span class="rupee-icon" onclick="openUPI()">₹</span>
                 <i class="fas fa-camera" onclick="openCamera()" style="cursor:pointer;"></i>
                 <i class="fas fa-ellipsis-v" onclick="toggleThreeDot()"></i>
+            </div>
+        </div>
+        <div class="action-bar" id="chatsActionBar">
+            <i class="fas fa-arrow-left" onclick="exitChatsSelectionMode()"></i>
+            <span id="chatsSelectionCount">0</span>
+            <div class="action-icons">
+                <i class="fas fa-thumbtack" onclick="batchChatAction('pin')" title="Pin"></i>
+                <i class="fas fa-bell-slash" onclick="batchChatAction('mute')" title="Mute"></i>
+                <i class="fas fa-archive" onclick="batchChatAction('archive')" title="Archive"></i>
+                <i class="fas fa-trash" onclick="batchChatAction('delete')" title="Delete"></i>
+                <i class="fas fa-ellipsis-v" onclick="batchChatAction('more')" title="More"></i>
             </div>
         </div>
 
@@ -6384,6 +6434,76 @@ function applyUnreadToChats() {
     } else if (b) b.remove();
   });
 }
+/* ============ CHAT SELECTION MODE ============ */
+let chatsSelectionMode = false;
+let selectedChats = [];     // array of { roomId, name, userId }
+
+function enterChatsSelectionMode(roomId, name, userId) {
+    chatsSelectionMode = true;
+    selectedChats = [{ roomId, name, userId }];
+    document.getElementById('chatsHeader').style.display = 'none';
+    document.getElementById('chatsActionBar').classList.add('active');
+    document.getElementById('chatsSelectionCount').innerText = '1';
+    document.querySelectorAll('#chatList .chat-item').forEach(el => {
+        if (el.dataset.roomId === roomId) el.classList.add('selected');
+    });
+}
+
+function exitChatsSelectionMode() {
+    chatsSelectionMode = false;
+    selectedChats = [];
+    document.getElementById('chatsHeader').style.display = 'flex';
+    document.getElementById('chatsActionBar').classList.remove('active');
+    document.querySelectorAll('#chatList .chat-item').forEach(el => el.classList.remove('selected'));
+}
+
+function toggleChatSelection(roomId, name, userId) {
+    const idx = selectedChats.findIndex(c => c.roomId === roomId);
+    if (idx >= 0) {
+        selectedChats.splice(idx, 1);
+    } else {
+        selectedChats.push({ roomId, name, userId });
+    }
+    const el = document.querySelector('#chatList .chat-item[data-room-id="' + roomId + '"]');
+    if (el) el.classList.toggle('selected', idx < 0);
+    document.getElementById('chatsSelectionCount').innerText = selectedChats.length;
+    if (selectedChats.length === 0) exitChatsSelectionMode();
+}
+
+async function batchChatAction(action) {
+    if (selectedChats.length === 0) return;
+
+    if (action === 'pin') {
+        for (const c of selectedChats) {
+            if (!prefs.pinned.includes(c.roomId)) prefs.pinned.push(c.roomId);
+        }
+        await savePrefs('pinned', prefs.pinned);
+    } else if (action === 'archive') {
+        for (const c of selectedChats) {
+            if (!prefs.archived.includes(c.roomId)) prefs.archived.push(c.roomId);
+        }
+        await savePrefs('archived', prefs.archived);
+    } else if (action === 'mute') {
+        alert(selectedChats.length + ' chats muted (demo)');
+    } else if (action === 'delete') {
+        if (!confirm('Delete ' + selectedChats.length + ' chat(s)? This cannot be undone.')) return;
+        for (const c of selectedChats) {
+            try {
+                await fetch('/api/messages/deleteRoom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomId: c.roomId })
+                });
+            } catch(e) {}
+        }
+    } else if (action === 'more') {
+        alert('More actions coming soon');
+    }
+
+    exitChatsSelectionMode();
+    loadContacts();
+}
+/* ============ END CHAT SELECTION MODE ============ */
 async function loadContacts() {
     try {
         const res = await fetch('/api/users');
@@ -6412,9 +6532,9 @@ meRow.dataset.roomId = makeRoomId(getMyId(), getMyId());
         chatList.appendChild(meRow);
 meRow.dataset.pinned = '0';
 
-        // Other users
+                // Other users
         users.filter(u => u._id !== getMyId()).forEach(u => {
-                        const isOnline = onlineUserIds.includes(u._id.toString());
+            const isOnline = onlineUserIds.includes(u._id.toString());
             const statusText = isOnline
                 ? `<span class="online-dot"></span>online`
                 : (u.hideLastSeen
@@ -6422,8 +6542,41 @@ meRow.dataset.pinned = '0';
                     : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`);
             const el = document.createElement('div');
             el.className = 'chat-item';
-el.dataset.roomId = makeRoomId(getMyId(), u._id);
-            el.onclick = () => openChatWindow(u.name, u._id);
+            const roomId = makeRoomId(getMyId(), u._id);
+            el.dataset.roomId = roomId;
+            el.dataset.name = u.name;
+
+            // Tap behaviour depends on selection mode
+            el.onclick = () => {
+                if (chatsSelectionMode) {
+                    toggleChatSelection(roomId, u.name, u._id);
+                } else {
+                    openChatWindow(u.name, u._id);
+                }
+            };
+
+            // Long-press to enter selection mode
+            let lpTimer = null, lpMoved = false;
+            el.addEventListener('touchstart', () => {
+                lpMoved = false;
+                lpTimer = setTimeout(() => {
+                    if (!chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
+                }, 450);
+            }, { passive: true });
+            el.addEventListener('touchmove', () => { lpMoved = true; clearTimeout(lpTimer); }, { passive: true });
+            el.addEventListener('touchend', () => clearTimeout(lpTimer));
+            el.addEventListener('mousedown', () => {
+                lpTimer = setTimeout(() => {
+                    if (!chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
+                }, 450);
+            });
+            el.addEventListener('mouseup', () => clearTimeout(lpTimer));
+            el.addEventListener('mouseleave', () => clearTimeout(lpTimer));
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (!chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
+            });
+
             const avatarHtml = u.avatarUrl
                 ? `<img src="${u.avatarUrl}" alt="">`
                 : u.name.charAt(0).toUpperCase();
@@ -6434,9 +6587,9 @@ el.dataset.roomId = makeRoomId(getMyId(), u._id);
                     <div class="chat-row-2"><span class="chat-msg">${statusText}</span></div>
                 </div>`;
             const isPinned = prefs.pinned.includes(el.dataset.roomId);
-el.dataset.pinned = isPinned ? '1' : '0';
-if (isPinned) { const pin = document.createElement('i'); pin.className = 'fas fa-thumbtack pin-icon'; el.querySelector('.chat-row-2').appendChild(pin); }
-chatList.appendChild(el);
+            el.dataset.pinned = isPinned ? '1' : '0';
+            if (isPinned) { const pin = document.createElement('i'); pin.className = 'fas fa-thumbtack pin-icon'; el.querySelector('.chat-row-2').appendChild(pin); }
+            chatList.appendChild(el);
         });
 
         applyChatFilter();
