@@ -197,6 +197,13 @@ app.post('/api/status', upload.single('media'), async (req, res) => {
     }
 });
 
+app.delete('/api/status/:statusId', async (req, res) => {
+  try {
+    await Status.findByIdAndDelete(req.params.statusId);
+    io.emit('newStatus'); 
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/status', async (req, res) => {
     try {
         const list = await Status.find().sort({ createdAt: -1 });

@@ -4708,9 +4708,16 @@ async function uploadStatus(event) {
 }
 
 async function loadStatuses() {
+    let list = [];
     try {
         const res = await fetch('/api/status');
-        const list = await res.json();
+        list = await res.json();
+        localStorage.setItem('wa_cached_statuses', JSON.stringify(list));
+    } catch(e) {
+        console.warn('Offline: loading cached statuses');
+        const cached = localStorage.getItem('wa_cached_statuses');
+        if (cached) list = JSON.parse(cached);
+    }
         const container = document.querySelector('#updatesScreen');
         // remove existing rendered status items (but keep My Status + headers)
         container.querySelectorAll('.status-item.dynamic').forEach(el => el.remove());
@@ -4735,6 +4742,25 @@ async function loadStatuses() {
 let statusTimer = null;
 let activeStatus = null;
 
+    // Add Delete button if it's my own status
+    const oldBtn = document.getElementById('statusDeleteBtn');
+    if (oldBtn) oldBtn.remove();
+    
+    if (status.userId === getMyId()) {
+        const delBtn = document.createElement('i');
+        delBtn.id = 'statusDeleteBtn';
+        delBtn.className = 'fas fa-trash';
+        delBtn.style.cssText = 'margin-right: 20px; cursor: pointer; font-size: 20px; color: #fff;';
+        delBtn.onclick = async () => {
+            if (confirm('Delete this status?')) {
+                await fetch('/api/status/' + status._id, { method: 'DELETE' });
+                closeStatusViewer();
+                loadStatuses();
+            }
+        };
+        const header = document.querySelector('.status-viewer-header');
+        header.insertBefore(delBtn, header.querySelector('.close'));
+    }
 function openStatusViewer(status) {
     activeStatus = status;
     document.getElementById('svName').innerText = status.userName;
