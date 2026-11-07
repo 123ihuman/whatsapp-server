@@ -1616,16 +1616,44 @@
   --splashscreen-startup-background:#F7F5F3;
   --splashscreen-startup-icon:#bbc5cb;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --splashscreen-primary-title:#F7F8FA;
-    --splashscreen-progress-background:#233138;
-    --splashscreen-progress-primary:#0b846d;
-    --splashscreen-secondary-lighter:#8D9599;
-    --splashscreen-startup-background:#0A1014;
-    --splashscreen-startup-icon:#676f73;
-  }
-}
+/* ============ DARK MODE ============ */
+body.dark-mode { background: #0b141a !important; }
+body.dark-mode .app-container { background: #111b21 !important; }
+body.dark-mode .header, 
+body.dark-mode .search-section, 
+body.dark-mode .chips, 
+body.dark-mode .pinned-chats, 
+body.dark-mode .bottom-nav, 
+body.dark-mode .settings-page { background: #111b21 !important; border-color: #222d34 !important; }
+body.dark-mode .search-bar { background: #202c33 !important; }
+body.dark-mode .search-bar input { color: #e9edef !important; }
+body.dark-mode .chat-name, 
+body.dark-mode .settings-title, 
+body.dark-mode .settings-row-text, 
+body.dark-mode .privacy-head { color: #e9edef !important; }
+body.dark-mode .chat-msg, 
+body.dark-mode .status, 
+body.dark-mode .settings-sub { color: #8696a0 !important; }
+body.dark-mode .chat-item { border-bottom: 1px solid #222d34 !important; }
+body.dark-mode .chat-window { background: #0b141a !important; }
+body.dark-mode .chat-window-header { background: #202c33 !important; }
+body.dark-mode .chat-window-header .name, 
+body.dark-mode .chat-window-header i { color: #e9edef !important; }
+body.dark-mode .messages-area { background-color: #0b141a !important; background-image: none !important; }
+body.dark-mode .msg-in { background: #202c33 !important; color: #e9edef !important; }
+body.dark-mode .msg-out { background: #005c4b !important; color: #e9edef !important; }
+body.dark-mode .chat-input { background: #202c33 !important; }
+body.dark-mode .input-wrapper { background: #2a3942 !important; }
+body.dark-mode .input-wrapper input { color: #e9edef !important; }
+body.dark-mode .settings-list { background: #111b21 !important; border-color: #222d34 !important; }
+body.dark-mode .settings-row { border-color: #222d34 !important; }
+body.dark-mode .privacy-inner, 
+body.dark-mode .wa-inner { background: #202c33 !important; }
+body.dark-mode .privacy-opt { color: #e9edef !important; }
+body.dark-mode .chat-menu, 
+body.dark-mode .three-dot-menu { background: #233138 !important; }
+body.dark-mode .chat-menu .menu-item, 
+body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-color: #111b21 !important; }
 
 #wa_web_initial_startup{
   position:fixed; inset:0; z-index:99999;
@@ -1720,25 +1748,10 @@
         <input type="email" id="authBackupEmail" placeholder="Backup email (for password reset)" style="display:none">
         <input type="password" id="authPassword" placeholder="Password">
         <button id="authBtn" onclick="doAuth()">Sign in</button>
-<div id="g_id_onload" data-client_id="1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
-<!-- Mobile Google Button -->
-<button onclick="openMobileGoogleLogin()" style="width:100%; background:#fff; border:1px solid #ddd; padding:12px; border-radius:24px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; margin-bottom:10px;">
+<button onclick="openMobileGoogleLogin()" style="width:100%; background:#fff; border:1px solid #ddd; padding:12px; border-radius:24px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; margin-top:14px; color:#3c4043; font-weight:600; font-size:15px;">
     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" width="20">
-    <span style="color:#3c4043; font-weight:600;">Sign in with Google</span>
+    Sign in with Google
 </button>
-
-<!-- Keep the existing desktop div below it -->
-<div class="g_id_signin" ...></div>
-<div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left" style="margin-top:14px;display:flex;justify-content:center;"></div>
-                <div class="auth-switch">
-            <span id="authSwitchText">Don't have an account?</span>
-            <a onclick="toggleAuthMode()" id="authSwitchBtn">Sign up</a>
-        </div>
-        <div style="text-align:center;margin-top:10px;font-size:14px;">
-            <a onclick="openForgotPassword()" style="color:#00a884;cursor:pointer;text-decoration:underline;">Forgot password?</a>
-        </div>
-    </div>
-</div>
 <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
 <div class="app-container">
        <div class="chat-menu" id="chatMenu" onclick="event.stopPropagation();">
@@ -4400,9 +4413,11 @@ function handleGoogleLogin(response) {
   .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
 }
 function openMobileGoogleLogin() {
-    const clientId = '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com';
-    const redirectUri = 'com.weathertimer.app://oauth';
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile`;
+    const clientId = '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com'; 
+    const redirectUri = 'com.weathertimer.app://oauth'; 
+    const scope = 'email profile';
+    
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=${scope}&nonce=12345`;
 
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
         window.Capacitor.Plugins.Browser.open({ url: url });
@@ -4414,12 +4429,7 @@ function openMobileGoogleLogin() {
 // Existing code below
 window.addEventListener('load', () => {
   if (typeof google !== 'undefined') {
-    google.accounts.id.initialize({ client_id: '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com', callback: handleGoogleLogin });
-  }
-});
-window.addEventListener('load', () => {
-  if (typeof google !== 'undefined') {
-    google.accounts.id.initialize({ client_id: '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com', callback: handleGoogleLogin });
+    google.accounts.id.initialize({ client_id: '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com', callback: handleGoogleLogin });
   }
 });
 /* ================= FORGOT PASSWORD (OTP) ================= */
@@ -6820,17 +6830,14 @@ function toggleDarkMode() {
 function applyDarkMode(state) {
     const t = document.getElementById('darkModeToggle');
     const sub = document.getElementById('darkModeSub');
+    
     if (state === 'on') {
-        document.body.style.background = '#0b141a';
-        document.querySelector('.app-container').style.background = '#111b21';
-        if (t) t.className = 'toggle on';
-        if (t) t.innerHTML = '<i class="fas fa-check"></i>';
+        document.body.classList.add('dark-mode');
+        if (t) { t.className = 'toggle on'; t.innerHTML = '<i class="fas fa-check"></i>'; }
         if (sub) sub.innerText = 'On';
     } else {
-        document.body.style.background = '#d1d7db';
-        document.querySelector('.app-container').style.background = '#fff';
-        if (t) t.className = 'toggle off';
-        if (t) t.innerHTML = '<i class="fas fa-minus"></i>';
+        document.body.classList.remove('dark-mode');
+        if (t) { t.className = 'toggle off'; t.innerHTML = '<i class="fas fa-minus"></i>'; }
         if (sub) sub.innerText = 'Off';
     }
 }
@@ -6858,8 +6865,10 @@ function applyFontSize(v) {
 (function initPrefs() {
     applySoundMuteUI();
   const t = localStorage.getItem('wa_theme');
-    // Force system dark mode
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // Force system dark mode on startup
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        applyDarkMode('on');
+    }
     if (systemDark) {
         document.body.style.background = '#0b141a';
         document.querySelector('.app-container').style.background = '#111b21';
@@ -7258,57 +7267,29 @@ async function loadContacts() {
     } catch (e) { console.warn('load groups failed', e); }
 }
 /* ============ ANDROID BACK BUTTON / EDGE SWIPE ============ */
-(function initBackButton() {
-    if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
-    const App = window.Capacitor.Plugins.App;
-
-    App.addListener('backButton', () => {
-        // 1. Close any open modal / sheet first
-        if (document.getElementById('mediaCaptionSheet').classList.contains('active')) return closeMediaCaption();
-        if (document.getElementById('msgActionsSheet').classList.contains('active')) return closeMsgActions();
-        if (document.getElementById('privacySheet').classList.contains('active')) return closePrivacyPicker();
-        if (document.getElementById('pinSheet').classList.contains('active')) return cancelPinEntry();
-        if (document.getElementById('attachSheet').classList.contains('active')) return closeAttachSheet();
-        if (document.getElementById('statusEmojiPicker').classList.contains('active')) return closeStatusEmojiPicker();
-        if (document.getElementById('emojiPicker').classList.contains('active')) return document.getElementById('emojiPicker').classList.remove('active');
-        if (document.getElementById('reactionPicker').classList.contains('active')) return closeReactionPicker();
-        if (document.getElementById('waSheet').classList.contains('active')) return closeWhatsAppSheet();
-        if (document.getElementById('waPicker').classList.contains('active')) return closeWAContactPicker();
-        if (document.getElementById('forgotSheet').classList.contains('active')) return closeForgotPassword();
-        if (document.getElementById('statusViewer').classList.contains('active')) return closeStatusViewer();
-        if (document.getElementById('locationScreen').classList.contains('active')) return closeLocationScreen();
-        if (document.getElementById('liveDurationOverlay').classList.contains('active')) return closeLiveDurationPicker();
-        if (document.getElementById('cameraOverlay').classList.contains('active')) return closeCamera();
-        if (document.getElementById('qrScannerScreen').style.display === 'flex') return closeQrScanner();
-
-        // 2. Selection mode
-        if (typeof chatsSelectionMode !== 'undefined' && chatsSelectionMode) return exitChatsSelectionMode();
-
-        // 3. Standalone screens (contact info, group info, settings, etc.)
-        if (document.getElementById('newGroupScreen').classList.contains('active')) return closeNewGroupScreen();
-        if (document.getElementById('contactInfoScreen').classList.contains('active')) return closeContactInfo();
-        if (document.getElementById('groupInfoScreen').classList.contains('active')) return closeGroupInfo();
-        if (document.getElementById('disappearingPicker').classList.contains('active')) return closeDisappearingPicker();
-        if (document.getElementById('broadcastPicker').classList.contains('active')) return closeBroadcastPicker();
-        if (document.getElementById('starredScreen').classList.contains('active')) return closeStarredScreen();
-        if (document.getElementById('blockedScreen').classList.contains('active')) return closeBlockedScreen();
-        if (document.getElementById('settingsScreen').classList.contains('active')) return closeSettings();
-
-        // 4. Contact picker
-        if (document.getElementById('selectContactScreen').style.display === 'block') return closeSelectContact();
-
-        // 5. Chat window open → close it back to chat list
-        if (document.getElementById('chatWindow').style.display === 'flex') return closeChatWindow();
-
-        // 6. Three-dot menu open → close it
-        if (document.getElementById('threeDotMenu').style.display === 'block') return closeDrawer();
-        if (document.getElementById('chatMenu').classList.contains('active')) return closeChatMenu();
-
-        // 7. On home screen → exit the app
-        App.exitApp();
-    });
-})();
-/* ============ END BACK BUTTON ============ */
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+            const App = window.Capacitor.Plugins.App;
+            App.addListener('backButton', () => {
+                // Modals & Sheets
+                if (document.getElementById('attachSheet').classList.contains('active')) return closeAttachSheet();
+                if (document.getElementById('chatMenu').classList.contains('active')) return closeChatMenu();
+                if (document.getElementById('threeDotMenu').style.display === 'block') return closeDrawer();
+                if (document.getElementById('settingsScreen').classList.contains('active')) return closeSettings();
+                if (document.getElementById('contactInfoScreen').classList.contains('active')) return closeContactInfo();
+                if (document.getElementById('groupInfoScreen').classList.contains('active')) return closeGroupInfo();
+                if (document.getElementById('emojiPicker').classList.contains('active')) return document.getElementById('emojiPicker').classList.remove('active');
+                
+                // Chat Screen
+                if (document.getElementById('chatWindow').style.display === 'flex') return closeChatWindow();
+                
+                // Home Screen -> Exit App
+                App.exitApp();
+            });
+        }
+    }, 1000); // Wait 1 second for Capacitor to wake up
+});
 /* ============ END BACK BUTTON ============ */
 socket.on('chatCleared',(d)=>{if(d.roomId===activeRoomId)document.getElementById('messagesArea').innerHTML='';});
 socket.on('messagesRead', (data) => {
@@ -7402,14 +7383,14 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
         if (event.url.includes('access_token')) {
             const hash = event.url.split('#')[1];
             const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
+                        const idToken = params.get('id_token'); // 👈 changed access_token to id_token
             
             if (window.Capacitor.Plugins.Browser) {
                 window.Capacitor.Plugins.Browser.close();
             }
             
-            if (accessToken) {
-                handleGoogleLogin({ credential: accessToken });
+            if (idToken) { // 👈 changed accessToken to idToken
+                handleGoogleLogin({ credential: idToken }); // 👈 changed accessToken to idToken
             }
         }
     });
