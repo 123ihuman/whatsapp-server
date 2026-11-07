@@ -17,8 +17,7 @@
     justify-content: center;
     height: 100vh;
 }
-        .app-container { width: 100%; max-width: 420px; height: 100%; background: #fff; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.2); }
-
+        .app-container { width: 100%; max-width: 420px; height: 100%; background: #fff; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.2); display: none; }
         .header { background: #fff; padding: 15px 20px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e0e0e0; }
         .logo { font-size: 26px; font-weight: 800; color: #00a884; }
         .header-actions i { font-size: 22px; color: #111b21; margin-left: 20px; cursor: pointer; }
@@ -4724,6 +4723,7 @@ async function doAuth() {
 
 function afterLogin() {
     document.getElementById('authScreen').style.display = 'none';
+    document.querySelector('.app-container').style.display = 'block'; // 👈 ADD THIS LINE
     console.log('✅ Logged in as', currentUser.name);
     if (socket.connected) socket.emit('userOnline', currentUser.id);
     loadContacts();
@@ -4782,25 +4782,26 @@ function logout() {
     const t = localStorage.getItem('wa_token');
     const u = localStorage.getItem('wa_user');
 
-    setTimeout(() => {
-        try {
-            if (t && u && u !== 'undefined') {
-                authToken = t;
-                currentUser = JSON.parse(u);
-                afterLogin();
-            } else {
+                   setTimeout(() => {
+            try {
+                if (t && u && u !== 'undefined') {
+                    authToken = t;
+                    currentUser = JSON.parse(u);
+                    afterLogin();
+                } else {
+                    document.getElementById('authScreen').style.display = 'flex';
+                    document.querySelector('.app-container').style.display = 'none'; // 👈 ADDED HERE
+                }
+            } catch (err) {
+                console.error("Startup crash prevented:", err);
                 document.getElementById('authScreen').style.display = 'flex';
+                document.querySelector('.app-container').style.display = 'none'; // 👈 ADDED HERE TOO
+                localStorage.removeItem('wa_token');
+                localStorage.removeItem('wa_user');
+            } finally {
+                reveal(); // This ALWAYS runs, no matter what
             }
-        } catch (err) {
-            console.error("Startup crash prevented:", err);
-            document.getElementById('authScreen').style.display = 'flex';
-            localStorage.removeItem('wa_token');
-            localStorage.removeItem('wa_user');
-        } finally {
-            reveal(); // This ALWAYS runs, no matter what
-        }
-    }, 1700);
-})();
+        }, 1700);
 // --- WEBRTC SETUP ---
 const rtcConfig = {
     iceServers: [
