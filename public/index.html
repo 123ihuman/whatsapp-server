@@ -1717,8 +1717,8 @@
 <div class="menu-item" onclick="closeChatMenu();openContactInfo()">Contact info</div>
 <div class="menu-item" onclick="closeChatMenu();openGroupInfo()" id="groupInfoMenuItem" style="display:none;">Group info</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Search in chat')">Search</div>
-<div class="menu-item" onclick="closeChatMenu();workInProgress('Select messages')">Select messages</div>
-<div class="menu-item" onclick="closeChatMenu();editLastMessage()">Edit last message</div>
+<div class="menu-item" onclick="closeChatMenu();enterMessageSelectionMode()">Select messages</div>
+<div class="menu-item" onclick="closeChatMenu();promptEditLastMessage()">Edit last message</div>
 <div class="menu-item" onclick="closeChatMenu();toggleMuteChat()" id="muteMenuItem">Mute notifications</div>
 <div class="menu-item" onclick="closeChatMenu();openDisappearingPicker()">Disappearing messages</div>
 <div class="menu-item" onclick="closeChatMenu();toggleStar()" id="starMenuItem">Star messages</div>
@@ -1903,10 +1903,7 @@
             <div><div class="name" style="font-size: 16px; font-weight: 500; color: #111b21;">Add status</div><div class="time" style="font-size: 13px; color: #667781;">Disappears after 24 hours</div></div>
         </div>
         <div class="status-section-title" style="margin-top: 15px;">Recent updates</div>
-        <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/e74c3c/FFFFFF?text=RS"></div><div><div class="name">Rahul Sharma</div><div class="time">1:28 PM</div></div></div>
-        <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/27ae60/FFFFFF?text=PP"></div><div><div class="name">Priya Patel</div><div class="time">9:13 AM</div></div></div>
-        <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/8e44ad/FFFFFF?text=AS"></div><div><div class="name">Amit Singh</div><div class="time">11:52 AM</div></div></div>
-        <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/3498db/FFFFFF?text=SG"></div><div><div class="name">Sneha Gupta</div><div class="time">Yesterday</div></div></div>
+<div id="recentUpdatesList"></div>
         <div class="fab" style="background: #00a884; bottom: 90px;" onclick="document.getElementById('statusFileInput').click()"><i class="fas fa-pen"></i></div>
     </div>
     <div class="screen" id="communitiesScreen">
@@ -3787,6 +3784,34 @@ function pinMessage(m) {
     escapeHtml(m.text || '(' + (m.mediaType || 'media') + ')');
   alert('Pinned');
 }
+function promptEditLastMessage() {
+    if (!activeRoomId) return;
+    const mine = [...document.querySelectorAll('#messagesArea .msg-out')].pop();
+    if (!mine || !mine._messageData) return alert('No message to edit');
+    const m = mine._messageData;
+    
+    const newText = prompt('Edit message:', m.text);
+    if (!newText || newText === m.text) return;
+    
+    fetch('/api/messages/edit', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ msgId: m._id, userId: getMyId(), text: newText }) 
+    }).then(() => {
+        const textEl = mine.querySelector('.msg-text');
+        if (textEl) textEl.innerText = newText;
+        if (!mine.querySelector('.msg-edited')) {
+            const timeEl = mine.querySelector('.msg-time');
+            if (timeEl) timeEl.insertAdjacentHTML('afterbegin', '<span class="msg-edited">(edited) </span>');
+        }
+    });
+}
+
+// Simple selection mode placeholder
+function enterMessageSelectionMode() {
+    alert("Long-press any message to select it, then use the top bar to delete or forward!");
+    // We already built the long-press to select context menu in the swipe task!
+}
 function editLastMessage() {
   if (!activeRoomId) return;
   const mine = [...document.querySelectorAll('#messagesArea .msg-out')].pop();
@@ -4927,26 +4952,42 @@ async function loadStatuses() {
         list = await res.json();
         localStorage.setItem('wa_cached_statuses', JSON.stringify(list));
     } catch(e) {
-        console.warn('Offline: loading cached statuses');
         const cached = localStorage.getItem('wa_cached_statuses');
         if (cached) list = JSON.parse(cached);
     }
 
-    const container = document.querySelector('#updatesScreen');
-    container.querySelectorAll('.status-item.dynamic').forEach(el => el.remove());
-    const anchor = container.querySelector('.status-section-title:nth-of-type(2)') || container.children[2];
-    
-    list.forEach(s => {
+    const container = document.getElementById('recentUpdatesList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const myId = getMyId();
+    // Don't show my own status in "Recent updates" (it's at the top in "My status")
+    const othersStatuses = list.filter(s => s.userId !== myId);
+
+    if (othersStatuses.length === 0) {
+        container.innerHTML = '<div style="padding:15px;color:#667781;font-size:14px;text-align:center;">No recent updates</div>';
+        return;
+    }
+
+    othersStatuses.forEach(s => {
         const el = document.createElement('div');
-        el.className = 'status-item dynamic';
+        el.className = 'status-item';
+        el.style.cursor = 'pointer';
+        
+        // Show a green ring if they have a status
         el.innerHTML = `
-            <div class="status-ring"><img src="${s.mediaUrl}" alt=""></div>
+            <div class="status-ring" style="border: 2px solid #25d366; border-radius: 50%; padding: 2px;">
+                <div class="avatar" style="width: 46px; height: 46px; background:#00a884; margin:0; font-size:18px;">
+                    ${s.userName.charAt(0).toUpperCase()}
+                </div>
+            </div>
             <div>
                 <div class="name">${s.userName}</div>
                 <div class="time">${new Date(s.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
             </div>`;
+        
         el.onclick = () => openStatusViewer(s);
-        anchor.insertAdjacentElement('afterend', el);
+        container.appendChild(el);
     });
 }
 
