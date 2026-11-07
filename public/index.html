@@ -4410,6 +4410,7 @@ function handleGoogleLogin(response) {
   })
   .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
 }
+
 function openMobileGoogleLogin() {
     const clientId = '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com';
     // 👇 Use the Render URL for web testing
@@ -4802,6 +4803,8 @@ function logout() {
                 reveal(); // This ALWAYS runs, no matter what
             }
         }, 1700);
+})(); // 👈 THIS CLOSES THE SPLASH SCREEN FUNCTION
+// --- WEBRTC SETUP ---
 // --- WEBRTC SETUP ---
 const rtcConfig = {
     iceServers: [
@@ -5152,6 +5155,9 @@ async function loadStatuses() {
 let statusTimer = null;
 let activeStatus = null;
 
+function openStatusViewer(status) {
+    activeStatus = status;
+    
     // Add Delete button if it's my own status
     const oldBtn = document.getElementById('statusDeleteBtn');
     if (oldBtn) oldBtn.remove();
@@ -5171,7 +5177,6 @@ let activeStatus = null;
         const header = document.querySelector('.status-viewer-header');
         header.insertBefore(delBtn, header.querySelector('.close'));
     }
-function openStatusViewer(status) {
     activeStatus = status;
     // Record the view if it's not my own status
     if (status.userId !== getMyId()) {
@@ -6997,7 +7002,8 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
             openSelectContact(); // Opens your contact picker
         }
     });
-}
+} // 👈 THIS IS THE MISSING BRACKET
+
 document.addEventListener('click', (e) => { if (!e.target.closest('.reaction-picker')) closeReactionPicker(); });
 socket.on('groupUpdated', () => { if (activeRoomId && activeRoomId.startsWith('group_')) openGroupInfo(); });
 socket.on('groupCreated', (d) => { loadContacts(); if (typeof loadSelectContacts === 'function') loadSelectContacts(); });
