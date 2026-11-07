@@ -173,6 +173,36 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
+// Google OAuth Redirect Bridge (Handles both Web and Mobile)
+app.get('/oauth', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Authenticating...</title></head>
+        <body style="background:#111b21; color:white; font-family:sans-serif; text-align:center; padding-top:50px;">
+            <h2>Authenticating...</h2>
+            <script>
+                const hash = window.location.hash.substring(1);
+                const params = new URLSearchParams(hash);
+                const idToken = params.get('id_token');
+                
+                if (idToken) {
+                    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (isMobile) {
+                        window.location.href = 'com.weathertimer.app://oauth#' + hash;
+                    } else {
+                        localStorage.setItem('wa_google_token', idToken);
+                        window.location.href = '/';
+                    }
+                } else {
+                    window.location.href = '/?error=no_token';
+                }
+            </script>
+        </body>
+        </html>
+    `);
+});
+// Make sure this is right above app.use(express.static('public'));
 
 // ---------- MIDDLEWARE ----------
 app.use(express.json());

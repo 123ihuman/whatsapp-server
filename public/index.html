@@ -4413,8 +4413,7 @@ function handleGoogleLogin(response) {
 
 function openMobileGoogleLogin() {
     const clientId = '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com';
-    // 👇 Use the Render URL for web testing
-    const redirectUri = 'https://whatsapp-server-e668.onrender.com'; 
+    const redirectUri = 'https://whatsapp-server-e668.onrender.com/oauth'; // 👈 EXACT MATCH
     const scope = 'email profile';
     
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=${scope}&nonce=12345`;
@@ -4723,21 +4722,35 @@ async function doAuth() {
 }
 
 function afterLogin() {
+    // Hide login screen
     document.getElementById('authScreen').style.display = 'none';
-    document.querySelector('.app-container').style.display = 'block'; // 👈 ADD THIS LINE
+    
+    // Show main app
+    const appContainer = document.querySelector('.app-container');
+    appContainer.style.display = 'block';
+    
+    // Force the body background to match the app (prevents black screen)
+    document.body.style.background = '#d1d7db';
+
+    // Load data safely
+    setTimeout(() => {
+        try {
+            loadContacts();
+            loadStatuses();
+        } catch(e) {
+            console.warn("Data load warning:", e);
+        }
+    }, 100);
+
     console.log('✅ Logged in as', currentUser.name);
     if (socket.connected) socket.emit('userOnline', currentUser.id);
-    loadContacts();
-    loadStatuses();
     requestNotificationPermission();
     setInterval(refreshUnread, 15000);
 
-    // Re-register push now that we know the user id
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
         try { window.Capacitor.Plugins.PushNotifications.register(); } catch(e) {}
     }
 }
-
 socket.on('onlineUsers', (ids) => {
     onlineUserIds = ids;
     loadContacts(); // re-render chat list with fresh online status
@@ -4758,6 +4771,14 @@ function logout() {
     location.reload();
 }
 
+// Catch Google Token from redirect (Web only)
+document.addEventListener('DOMContentLoaded', () => {
+    const googleToken = localStorage.getItem('wa_google_token');
+    if (googleToken) {
+        localStorage.removeItem('wa_google_token');
+        handleGoogleLogin({ credential: googleToken });
+    }
+});
 // --- SPLASH SCREEN + AUTO-LOGIN ---
 (function () {
     const bar = document.querySelector('#wa_web_initial_startup progress');
@@ -7385,17 +7406,21 @@ document.addEventListener('click', function(e){
 /* ==== END PATCH ==== */
 
 // 👇 DEEP LINK LISTENER FOR GOOGLE LOGIN 👇
+// 👇 DEEP LINK LISTENER FOR GOOGLE LOGIN 👇
 if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
     window.Capacitor.Plugins.App.addListener('appUrlOpen', (event) => {
+        // Catch the custom scheme bounce from the server
         if (event.url.includes('id_token')) {
             const hash = event.url.split('#')[1];
             const params = new URLSearchParams(hash);
             const idToken = params.get('id_token'); 
             
+            // Close Chrome on the phone
             if (window.Capacitor.Plugins.Browser) {
                 window.Capacitor.Plugins.Browser.close();
             }
             
+            // Log them in
             if (idToken) { 
                 handleGoogleLogin({ credential: idToken }); 
             }
