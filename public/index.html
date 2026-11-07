@@ -5549,8 +5549,8 @@ function sendStatusReaction(emoji, btnEl) {
     spawnStatusEmojiBurst(emoji);
     // Close picker if open
     closeStatusEmojiPicker();
-    // Broadcast to other viewers of this status (optional)
-       if (activeStatus && socket) {
+    
+    if (activeStatus && socket) {
         // Internal app notification
         socket.emit('statusReaction', {
             statusId: activeStatus._id,
@@ -5561,13 +5561,23 @@ function sendStatusReaction(emoji, btnEl) {
 
         // Send to Real WhatsApp if we have their number!
         if (activeStatus.phone) {
+            // 1. Clean the number (remove spaces, +, etc.)
+            let num = activeStatus.phone.replace(/\D/g, ''); 
+            
+            // 2. Add '91' if it's a 10-digit Indian number
+            if (num.length === 10) {
+                num = '91' + num;
+            }
+
+            // 3. Send to backend
             fetch('/api/status-react-whatsapp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: activeStatus.phone, emoji: emoji })
+                body: JSON.stringify({ phone: num, emoji: emoji })
             }).catch(e => console.warn('WhatsApp reaction failed', e));
         }
     }
+}
 function spawnStatusEmojiBurst(emoji) {
     const layer = document.getElementById('emojiBurstLayer');
     if (!layer) return;
