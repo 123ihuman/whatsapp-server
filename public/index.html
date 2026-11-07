@@ -4773,29 +4773,16 @@ function logout() {
 
     // Hide splash after minimum 1.6s
     function reveal() {
-        splash.classList.add('hide');
-        setTimeout(() => splash.remove(), 500);
+        if (splash) {
+            splash.classList.add('hide');
+            setTimeout(() => splash.remove(), 500);
+        }
     }
 
     const t = localStorage.getItem('wa_token');
     const u = localStorage.getItem('wa_user');
 
     setTimeout(() => {
-        // 👇 FIX: Added try/catch and "u !== 'undefined'" to prevent crash
-        if (t && u && u !== 'undefined') {
-            try {
-                authToken = t;
-                currentUser = JSON.parse(u);
-                afterLogin();
-            } catch (e) {
-                localStorage.removeItem('wa_token');
-                localStorage.removeItem('wa_user');
-                document.getElementById('authScreen').style.display = 'flex';
-            }
-        } else {
-            localStorage.removeItem('wa_token');
-            localStorage.removeItem('wa_user');
-                setTimeout(() => {
         try {
             if (t && u && u !== 'undefined') {
                 authToken = t;
@@ -4810,8 +4797,7 @@ function logout() {
             localStorage.removeItem('wa_token');
             localStorage.removeItem('wa_user');
         } finally {
-            // This ALWAYS runs, even if there is an error
-            reveal(); 
+            reveal(); // This ALWAYS runs, no matter what
         }
     }, 1700);
 })();
