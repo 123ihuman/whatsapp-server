@@ -1298,6 +1298,19 @@
     text-align: center; color: #111b21;
 }
 .ng-name-input::placeholder { color: #8696a0; }
+/* ============ CUSTOM TEXT STYLES ============ */
+.style-neon-pink { color: #ff007f; text-shadow: 0 0 5px #ff007f, 0 0 10px #ff007f; font-weight: bold; }
+.style-neon-blue { color: #00ffff; text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; font-weight: bold; }
+.style-neon-green { color: #39ff14; text-shadow: 0 0 5px #39ff14, 0 0 10px #39ff14; font-weight: bold; }
+.style-rainbow {
+    background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
+}
+.style-cursive { font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; font-size: 20px; font-weight: 500; }
+.style-mono { font-family: 'Courier New', Courier, monospace; font-weight: bold; letter-spacing: 1px; }
 /* ============ SWIPE TO REPLY ============ */
 .msg { touch-action: pan-y; }
 .msg.swiping { transition: none !important; }
@@ -1894,7 +1907,7 @@
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/27ae60/FFFFFF?text=PP"></div><div><div class="name">Priya Patel</div><div class="time">9:13 AM</div></div></div>
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/8e44ad/FFFFFF?text=AS"></div><div><div class="name">Amit Singh</div><div class="time">11:52 AM</div></div></div>
         <div class="status-item"><div class="status-ring"><img src="https://placehold.co/100x100/3498db/FFFFFF?text=SG"></div><div><div class="name">Sneha Gupta</div><div class="time">Yesterday</div></div></div>
-        <div class="fab" style="background: #00a884; bottom: 90px;" onclick="workInProgress('New Status')"><i class="fas fa-pen"></i></div>
+        <div class="fab" style="background: #00a884; bottom: 90px;" onclick="document.getElementById('statusFileInput').click()"><i class="fas fa-pen"></i></div>
     </div>
     <div class="screen" id="communitiesScreen">
         <div class="community-header">Communities <i class="fas fa-ellipsis-v"></i></div>
@@ -1970,6 +1983,7 @@
                 <div class="recording-time" id="recordingTime">0:00</div>
                 <div class="recording-cancel" onclick="cancelVoiceRecording()">Cancel</div>
             </div>
+<i class="fas fa-font" onclick="openTextStylePicker()" style="cursor:pointer; color:#54656f; font-size:18px;" title="Text Style"></i>
             <div class="input-wrapper">
                 <i class="far fa-smile" onclick="toggleEmojiPicker(event)" style="cursor:pointer;"></i>
                 <input type="text" id="chatInput" placeholder="Message">
@@ -2284,7 +2298,7 @@
                 <div class="settings-title">Appearance</div>
             </div>
             <div class="settings-list">
-                <div class="settings-row" onclick="workInProgress('Default chat theme')">
+                <div class="settings-row" onclick="openThemePicker()">
                     <div class="settings-icon"><i class="fas fa-comment"></i></div>
                     <div class="settings-row-text">Default chat theme</div>
                     <div class="theme-preview"></div>
@@ -2488,6 +2502,65 @@
   </div>
 </div>
 
+<!-- ================= TEXT STYLE PICKER ================= -->
+<div class="privacy-sheet" id="textStyleSheet" onclick="if(event.target===this)closeTextStylePicker()">
+  <div class="privacy-inner">
+    <div class="privacy-head">Text Style</div>
+    <div class="privacy-sub">Pick a style to make your next message glow!</div>
+    
+    <div class="privacy-options" style="max-height: 300px; overflow-y: auto;">
+        <div class="privacy-opt" onclick="setTextStyle('')">
+            <span style="font-size:16px;">Normal</span>
+        </div>
+        <div class="privacy-opt" onclick="setTextStyle('style-neon-pink')">
+            <span class="style-neon-pink">Neon Pink</span>
+        </div>
+        <div class="privacy-opt" onclick="setTextStyle('style-neon-blue')">
+            <span class="style-neon-blue">Neon Blue</span>
+        </div>
+        <div class="privacy-opt" onclick="setTextStyle('style-neon-green')">
+            <span class="style-neon-green">Neon Green</span>
+        </div>
+        <div class="privacy-opt" onclick="setTextStyle('style-rainbow')">
+            <span class="style-rainbow">Rainbow Gradient</span>
+        </div>
+        <div class="privacy-opt" onclick="setTextStyle('style-cursive')">
+            <span class="style-cursive">Cursive Font</span>
+        </div>
+        <div class="privacy-opt" onclick="setTextStyle('style-mono')">
+            <span class="style-mono">Hacker Font</span>
+        </div>
+    </div>
+    <button class="privacy-cancel" onclick="closeTextStylePicker()">Cancel</button>
+  </div>
+</div>
+<!-- ================= CHAT THEME PICKER ================= -->
+<div class="privacy-sheet" id="themePickerSheet" onclick="if(event.target===this)closeThemePicker()">
+  <div class="privacy-inner">
+    <div class="privacy-head">Chat theme</div>
+    <div class="privacy-sub">Choose a color or a background photo for the chat.</div>
+    
+    <div style="padding: 15px 22px;">
+        <div style="font-weight:600;font-size:14px;margin-bottom:10px;color:#111b21;">Solid Colors</div>
+        <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:20px;">
+            <div onclick="applyChatTheme('color', '#efeae2')" style="width:40px;height:40px;border-radius:50%;background:#efeae2;border:2px solid #ccc;cursor:pointer;" title="Default"></div>
+            <div onclick="applyChatTheme('color', '#d9fdd3')" style="width:40px;height:40px;border-radius:50%;background:#d9fdd3;border:2px solid #ccc;cursor:pointer;"></div>
+            <div onclick="applyChatTheme('color', '#e0f2fe')" style="width:40px;height:40px;border-radius:50%;background:#e0f2fe;border:2px solid #ccc;cursor:pointer;"></div>
+            <div onclick="applyChatTheme('color', '#fce4ec')" style="width:40px;height:40px;border-radius:50%;background:#fce4ec;border:2px solid #ccc;cursor:pointer;"></div>
+            <div onclick="applyChatTheme('color', '#fff8e1')" style="width:40px;height:40px;border-radius:50%;background:#fff8e1;border:2px solid #ccc;cursor:pointer;"></div>
+            <div onclick="applyChatTheme('color', '#111b21')" style="width:40px;height:40px;border-radius:50%;background:#111b21;border:2px solid #ccc;cursor:pointer;" title="Dark"></div>
+        </div>
+        
+        <div style="font-weight:600;font-size:14px;margin-bottom:10px;color:#111b21;">Custom Photo</div>
+        <button class="btn-green" onclick="document.getElementById('themeImageInput').click()" style="width:100%;padding:12px;font-size:14px;background:#00a884;color:white;">
+            <i class="fas fa-image" style="margin-right:8px;"></i> Choose from Gallery
+        </button>
+        <input type="file" id="themeImageInput" accept="image/*" style="display:none" onchange="uploadThemeImage(event)">
+        
+        <button class="privacy-cancel" onclick="closeThemePicker()">Cancel</button>
+    </div>
+  </div>
+</div>
 <!-- ================= PRIVACY PICKER ================= -->
 <div class="privacy-sheet" id="privacySheet" onclick="if(event.target===this)closePrivacyPicker()">
   <div class="privacy-inner">
@@ -2513,7 +2586,6 @@
   </div>
 </div>
 
-<!-- ================= FORGOT PASSWORD (OTP) ================= -->
 <!-- ================= SEND TO WHATSAPP SHEET ================= -->
 <div class="wa-sheet" id="waSheet" onclick="if(event.target===this)closeWhatsAppSheet()">
   <div class="wa-inner">
@@ -2528,6 +2600,14 @@
   </div>
 </div>
 
+<!-- ================= FORWARD MESSAGE PICKER ================= -->
+<div class="wa-picker" id="forwardPicker">
+  <div class="wa-picker-head">
+    <i class="fas fa-arrow-left" onclick="closeForwardPicker()"></i>
+    <div>Forward to...</div>
+  </div>
+  <div class="wa-picker-body" id="forwardPickerList"></div>
+</div>
 <!-- ================= WHATSAPP CONTACT PICKER ================= -->
 <div class="wa-picker" id="waPicker">
   <div class="wa-picker-head">
@@ -3705,10 +3785,100 @@ function editLastMessage() {
   if (!newText || newText === m.text) return;
   fetch('/api/messages/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgId: m._id, userId: getMyId(), text: newText }) });
 }
+let pendingForwardMsg = null;
+
 function forwardMessage(m) {
-  const roomId = prompt('Forward to which chat? Paste their user ID:');
-  if (!roomId) return;
-  fetch('/api/messages/forward', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msgId: m._id, targetRoomId: roomId, userId: getMyId(), senderName: getMyName() }) }).then(() => alert('Forwarded'));
+    pendingForwardMsg = m;
+    document.getElementById('forwardPicker').classList.add('active');
+    
+    // Load contacts and groups into the picker
+    const list = document.getElementById('forwardPickerList');
+    list.innerHTML = '<div class="wa-picker-empty">Loading...</div>';
+    
+    Promise.all([
+        fetch('/api/users').then(r => r.json()),
+        fetch('/api/groups/' + getMyId()).then(r => r.json())
+    ]).then(([users, groups]) => {
+        list.innerHTML = '';
+        let hasItems = false;
+
+        // 1. Add Groups
+        if (groups && groups.length > 0) {
+            const h = document.createElement('div');
+            h.className = 'wa-picker-section';
+            h.innerText = 'Groups';
+            list.appendChild(h);
+            
+            groups.forEach(g => {
+                const el = document.createElement('div');
+                el.className = 'wa-contact';
+                el.innerHTML = `
+                    <div class="wa-av" style="background:#00a884;">G</div>
+                    <div class="wa-info">
+                        <div class="wa-name">${g.name}</div>
+                        <div class="wa-num">${g.members.length} members</div>
+                    </div>`;
+                el.onclick = () => executeForward(g.groupId);
+                list.appendChild(el);
+                hasItems = true;
+            });
+        }
+
+        // 2. Add Users (1-on-1)
+        const others = users.filter(u => u._id !== getMyId());
+        if (others.length > 0) {
+            const h = document.createElement('div');
+            h.className = 'wa-picker-section';
+            h.innerText = 'Contacts';
+            list.appendChild(h);
+            
+            others.forEach(u => {
+                const el = document.createElement('div');
+                el.className = 'wa-contact';
+                el.innerHTML = `
+                    <div class="wa-av">${u.avatarUrl ? '<img src="'+u.avatarUrl+'">' : u.name.charAt(0).toUpperCase()}</div>
+                    <div class="wa-info">
+                        <div class="wa-name">${u.name}</div>
+                        <div class="wa-num">${u.identifier}</div>
+                    </div>`;
+                el.onclick = () => executeForward(makeRoomId(getMyId(), u._id));
+                list.appendChild(el);
+                hasItems = true;
+            });
+        }
+
+        if (!hasItems) {
+            list.innerHTML = '<div class="wa-picker-empty">No chats available</div>';
+        }
+    });
+}
+
+function closeForwardPicker() {
+    document.getElementById('forwardPicker').classList.remove('active');
+    pendingForwardMsg = null;
+}
+
+async function executeForward(targetRoomId) {
+    if (!pendingForwardMsg) return;
+    const m = pendingForwardMsg;
+    closeForwardPicker();
+
+    try {
+        await fetch('/api/messages/forward', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                msgId: m._id,
+                targetRoomId: targetRoomId,
+                userId: getMyId(),
+                senderName: getMyName()
+            })
+        });
+        playSendSound();
+        alert('Forwarded successfully');
+    } catch (e) {
+        alert('Failed to forward');
+    }
 }
 
 function replyToMessage(msgId, senderName, previewText) {
@@ -3739,11 +3909,41 @@ async function deleteMessage(msgId) {
         alert('Delete failed');
     }
 }
+/* ============ TEXT STYLE LOGIC ============ */
+let activeTextStyle = '';
+
+function openTextStylePicker() {
+    document.getElementById('textStyleSheet').classList.add('active');
+}
+function closeTextStylePicker() {
+    document.getElementById('textStyleSheet').classList.remove('active');
+}
+function setTextStyle(styleClass) {
+    activeTextStyle = styleClass;
+    closeTextStylePicker();
+    
+    // Show a preview in the input box
+    const input = document.getElementById('chatInput');
+    if (styleClass) {
+        input.style.fontWeight = 'bold';
+        input.placeholder = 'Styled message...';
+    } else {
+        input.style.fontWeight = 'normal';
+        input.placeholder = 'Message';
+    }
+}
 
     // --- SEND MESSAGE (via socket) ---
               function sendSimMessage() {
         const input = document.getElementById('chatInput');
-        const text = input.value.trim();
+        let text = input.value.trim();
+if (activeTextStyle && text) {
+    // Wrap the text in an HTML span with the chosen style
+    text = `<span class="${activeTextStyle}">${text}</span>`;
+    activeTextStyle = ''; // Reset for the next message
+    input.style.fontWeight = 'normal';
+    input.placeholder = 'Message';
+}
         if (!text || !activeRoomId) return;
         playSendSound();
         socket.emit('sendMessage', {
@@ -4004,6 +4204,7 @@ function openUPI() {
 
     // Ensure mic is visible on first load (empty input)
     document.getElementById('sendBtn').style.display = 'none';
+setTimeout(loadChatTheme, 500);
     document.getElementById('micBtn').style.display  = 'flex';
 
     document.getElementById('chatInput').addEventListener('keypress', function (e) {
@@ -5360,6 +5561,62 @@ async function capturePhoto() {
         closeMediaCaption();
     }
 }
+/* ============ CHAT THEME LOGIC ============ */
+function openThemePicker() {
+    document.getElementById('themePickerSheet').classList.add('active');
+}
+
+function closeThemePicker() {
+    document.getElementById('themePickerSheet').classList.remove('active');
+}
+
+function applyChatTheme(type, value) {
+    const area = document.getElementById('messagesArea');
+    if (type === 'color') {
+        area.style.backgroundImage = 'none';
+        area.style.backgroundColor = value;
+        localStorage.setItem('wa_chat_theme', JSON.stringify({ type: 'color', value: value }));
+    } else if (type === 'image') {
+        area.style.backgroundColor = '#000'; 
+        area.style.backgroundImage = `url('${value}')`;
+        area.style.backgroundSize = 'cover';
+        area.style.backgroundPosition = 'center';
+        localStorage.setItem('wa_chat_theme', JSON.stringify({ type: 'image', value: value }));
+    }
+    closeThemePicker();
+}
+
+function uploadThemeImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        applyChatTheme('image', dataUrl);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+
+function loadChatTheme() {
+    const saved = localStorage.getItem('wa_chat_theme');
+    if (saved) {
+        try {
+            const t = JSON.parse(saved);
+            const area = document.getElementById('messagesArea');
+            if (t.type === 'color') {
+                area.style.backgroundImage = 'none';
+                area.style.backgroundColor = t.value;
+            } else if (t.type === 'image') {
+                area.style.backgroundColor = '#000';
+                area.style.backgroundImage = `url('${t.value}')`;
+                area.style.backgroundSize = 'cover';
+                area.style.backgroundPosition = 'center';
+            }
+        } catch(e) {}
+    }
+}
+/* ============ END CHAT THEME LOGIC ============ */
 // --- SETTINGS NAVIGATION ---
 function openSettings(page) {
     playClickSound();
