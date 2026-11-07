@@ -1930,7 +1930,10 @@
             <div class="status-ring"><img src="https://placehold.co/100x100?text=My"><i class="fas fa-plus"></i></div>
             <div><div class="name" style="font-size: 16px; font-weight: 500; color: #111b21;">Add status</div><div class="time" style="font-size: 13px; color: #667781;">Disappears after 24 hours</div></div>
         </div>
-        <div class="status-section-title" style="margin-top: 15px;">Recent updates</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-right:15px;">
+    <div class="status-section-title" style="margin-top: 15px;">Recent updates</div>
+    <i class="fas fa-sync-alt" style="color:#00a884; cursor:pointer; font-size:16px;" onclick="loadStatuses()" title="Refresh"></i>
+</div>
 <div id="recentUpdatesList"></div>
         <div class="fab" style="background: #00a884; bottom: 90px;" onclick="document.getElementById('statusFileInput').click()"><i class="fas fa-pen"></i></div>
     </div>
@@ -3747,7 +3750,7 @@ function addToCustomList() {
     }
 }
 
-           function closeChatWindow() {
+          function closeChatWindow() {
     playClickSound();
     document.getElementById('chatWindow').style.display = 'none';
     
@@ -3755,9 +3758,12 @@ function addToCustomList() {
     document.getElementById('chatsScreen').classList.add('active');
     document.getElementById('chatsHeader').style.display = 'flex';
     document.getElementById('chatsActionBar').classList.remove('active');
-    
-    // Ensure the FAB is visible
     document.getElementById('mainFab').style.display = 'flex';
+    
+    // 👇 THE FIX: Instantly close the 3-dot menu if it's open
+    closeChatMenu();
+    document.getElementById('emojiPicker').classList.remove('active');
+    document.getElementById('attachSheet').classList.remove('active');
     
     document.getElementById('chatInput').value = "";
 }
@@ -6249,9 +6255,12 @@ function toggleArchive() {
   if (!activeRoomId) return;
   const has = prefs.archived.includes(activeRoomId);
   const list = has ? prefs.archived.filter(x => x !== activeRoomId) : [...prefs.archived, activeRoomId];
-  savePrefs('archived', list);
-  document.getElementById('archiveMenuItem').innerText = has ? 'Archive chat' : 'Unarchive chat';
-  if (!has) closeChatWindow();
+  
+  // Save and refresh immediately
+  savePrefs('archived', list).then(() => {
+      closeChatWindow(); // Go back to home screen
+      loadContacts();    // Reload the list to show the Archive folder
+  });
 }
 function toggleStar() {
   if (!activeRoomId) return;
@@ -6809,22 +6818,21 @@ function toggleDarkMode() {
   applyDarkMode(next);
 }
 function applyDarkMode(state) {
-  const t = document.getElementById('darkModeToggle');
-  const sub = document.getElementById('darkModeSub');
-  if (state === 'on') {
-    document.documentElement.style.setProperty('--bg', '#0b141a');
-    document.body.style.background = '#0b141a';
-    document.querySelector('.app-container').style.background = '#111b21';
-    if (t) t.className = 'toggle on';
-    if (t) t.innerHTML = '<i class="fas fa-check"></i>';
-    if (sub) sub.innerText = 'On';
-  } else {
-    document.body.style.background = '#d1d7db';
-    document.querySelector('.app-container').style.background = '#fff';
-    if (t) t.className = 'toggle off';
-    if (t) t.innerHTML = '<i class="fas fa-minus"></i>';
-    if (sub) sub.innerText = 'Off';
-  }
+    const t = document.getElementById('darkModeToggle');
+    const sub = document.getElementById('darkModeSub');
+    if (state === 'on') {
+        document.body.style.background = '#0b141a';
+        document.querySelector('.app-container').style.background = '#111b21';
+        if (t) t.className = 'toggle on';
+        if (t) t.innerHTML = '<i class="fas fa-check"></i>';
+        if (sub) sub.innerText = 'On';
+    } else {
+        document.body.style.background = '#d1d7db';
+        document.querySelector('.app-container').style.background = '#fff';
+        if (t) t.className = 'toggle off';
+        if (t) t.innerHTML = '<i class="fas fa-minus"></i>';
+        if (sub) sub.innerText = 'Off';
+    }
 }
 function applyAppTheme(color) {
   document.documentElement.style.setProperty('--primary', color);
@@ -6850,6 +6858,16 @@ function applyFontSize(v) {
 (function initPrefs() {
     applySoundMuteUI();
   const t = localStorage.getItem('wa_theme');
+    // Force system dark mode
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (systemDark) {
+        document.body.style.background = '#0b141a';
+        document.querySelector('.app-container').style.background = '#111b21';
+        const tgl = document.getElementById('darkModeToggle');
+        if (tgl) { tgl.className = 'toggle on'; tgl.innerHTML = '<i class="fas fa-check"></i>'; }
+        const sub = document.getElementById('darkModeSub');
+        if (sub) sub.innerText = 'System (Dark)';
+    }
   if (t) { const th = APP_THEMES.find(x => x.name === t); if (th) setTimeout(() => applyAppTheme(th.bg), 100); }
   const f = localStorage.getItem('wa_font');
   if (f) { const s = document.getElementById('fontSlider'); if (s) s.value = f; setTimeout(() => applyFontSize(f), 100); }
@@ -6953,6 +6971,22 @@ socket.on('newStatus', () => loadStatuses());
 
 socket.on('messageReacted', (d) => { if (d.roomId !== activeRoomId) return; const el = document.querySelector('#messagesArea [data-msg-id="' + d.msgId + '"]'); if (el) renderReactions(el, d.reactions); });
 socket.on('messageEdited', (d) => { if (d.roomId !== activeRoomId) return; const el = document.querySelector('#messagesArea [data-msg-id="' + d.msgId + '"]'); if (!el) return; const t = el.querySelector('.msg-text'); if (t) t.innerText = d.text; if (!el.querySelector('.msg-edited')) { const timeEl = el.querySelector('.msg-time'); if (timeEl) timeEl.insertAdjacentHTML('afterbegin', '<span class="msg-edited">(edited) </span>'); } });
+/* ============ SHARE INTENT HANDLER ============ */
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appRestoredResult', (data) => {
+        if (data.pluginId === 'App' && data.methodName === 'getLaunchUrl') {
+            // Future handler
+        }
+    });
+    // When Android sends a file, Capacitor opens the app. We prompt to pick a chat.
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', (event) => {
+        // If the URL starts with content://, it's a shared file
+        if (event.url && event.url.startsWith('content://')) {
+            alert('File received! Please select a chat to share it to.');
+            openSelectContact(); // Opens your contact picker
+        }
+    });
+}
 document.addEventListener('click', (e) => { if (!e.target.closest('.reaction-picker')) closeReactionPicker(); });
 socket.on('groupUpdated', () => { if (activeRoomId && activeRoomId.startsWith('group_')) openGroupInfo(); });
 socket.on('groupCreated', (d) => { loadContacts(); if (typeof loadSelectContacts === 'function') loadSelectContacts(); });
@@ -7223,6 +7257,58 @@ async function loadContacts() {
         });
     } catch (e) { console.warn('load groups failed', e); }
 }
+/* ============ ANDROID BACK BUTTON / EDGE SWIPE ============ */
+(function initBackButton() {
+    if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
+    const App = window.Capacitor.Plugins.App;
+
+    App.addListener('backButton', () => {
+        // 1. Close any open modal / sheet first
+        if (document.getElementById('mediaCaptionSheet').classList.contains('active')) return closeMediaCaption();
+        if (document.getElementById('msgActionsSheet').classList.contains('active')) return closeMsgActions();
+        if (document.getElementById('privacySheet').classList.contains('active')) return closePrivacyPicker();
+        if (document.getElementById('pinSheet').classList.contains('active')) return cancelPinEntry();
+        if (document.getElementById('attachSheet').classList.contains('active')) return closeAttachSheet();
+        if (document.getElementById('statusEmojiPicker').classList.contains('active')) return closeStatusEmojiPicker();
+        if (document.getElementById('emojiPicker').classList.contains('active')) return document.getElementById('emojiPicker').classList.remove('active');
+        if (document.getElementById('reactionPicker').classList.contains('active')) return closeReactionPicker();
+        if (document.getElementById('waSheet').classList.contains('active')) return closeWhatsAppSheet();
+        if (document.getElementById('waPicker').classList.contains('active')) return closeWAContactPicker();
+        if (document.getElementById('forgotSheet').classList.contains('active')) return closeForgotPassword();
+        if (document.getElementById('statusViewer').classList.contains('active')) return closeStatusViewer();
+        if (document.getElementById('locationScreen').classList.contains('active')) return closeLocationScreen();
+        if (document.getElementById('liveDurationOverlay').classList.contains('active')) return closeLiveDurationPicker();
+        if (document.getElementById('cameraOverlay').classList.contains('active')) return closeCamera();
+        if (document.getElementById('qrScannerScreen').style.display === 'flex') return closeQrScanner();
+
+        // 2. Selection mode
+        if (typeof chatsSelectionMode !== 'undefined' && chatsSelectionMode) return exitChatsSelectionMode();
+
+        // 3. Standalone screens (contact info, group info, settings, etc.)
+        if (document.getElementById('newGroupScreen').classList.contains('active')) return closeNewGroupScreen();
+        if (document.getElementById('contactInfoScreen').classList.contains('active')) return closeContactInfo();
+        if (document.getElementById('groupInfoScreen').classList.contains('active')) return closeGroupInfo();
+        if (document.getElementById('disappearingPicker').classList.contains('active')) return closeDisappearingPicker();
+        if (document.getElementById('broadcastPicker').classList.contains('active')) return closeBroadcastPicker();
+        if (document.getElementById('starredScreen').classList.contains('active')) return closeStarredScreen();
+        if (document.getElementById('blockedScreen').classList.contains('active')) return closeBlockedScreen();
+        if (document.getElementById('settingsScreen').classList.contains('active')) return closeSettings();
+
+        // 4. Contact picker
+        if (document.getElementById('selectContactScreen').style.display === 'block') return closeSelectContact();
+
+        // 5. Chat window open → close it back to chat list
+        if (document.getElementById('chatWindow').style.display === 'flex') return closeChatWindow();
+
+        // 6. Three-dot menu open → close it
+        if (document.getElementById('threeDotMenu').style.display === 'block') return closeDrawer();
+        if (document.getElementById('chatMenu').classList.contains('active')) return closeChatMenu();
+
+        // 7. On home screen → exit the app
+        App.exitApp();
+    });
+})();
+/* ============ END BACK BUTTON ============ */
 /* ============ END BACK BUTTON ============ */
 socket.on('chatCleared',(d)=>{if(d.roomId===activeRoomId)document.getElementById('messagesArea').innerHTML='';});
 socket.on('messagesRead', (data) => {
