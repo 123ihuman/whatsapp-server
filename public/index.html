@@ -6,6 +6,7 @@
     <title>WhatsApp</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/@capacitor/browser@8.0.0/dist/plugin.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1701,6 +1702,14 @@
         <input type="password" id="authPassword" placeholder="Password">
         <button id="authBtn" onclick="doAuth()">Sign in</button>
 <div id="g_id_onload" data-client_id="1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+<!-- Mobile Google Button -->
+<button onclick="openMobileGoogleLogin()" style="width:100%; background:#fff; border:1px solid #ddd; padding:12px; border-radius:24px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; margin-bottom:10px;">
+    <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" width="20">
+    <span style="color:#3c4043; font-weight:600;">Sign in with Google</span>
+</button>
+
+<!-- Keep the existing desktop div below it -->
+<div class="g_id_signin" ...></div>
 <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left" style="margin-top:14px;display:flex;justify-content:center;"></div>
                 <div class="auth-switch">
             <span id="authSwitchText">Don't have an account?</span>
@@ -3720,15 +3729,19 @@ function addToCustomList() {
 }
 
            function closeChatWindow() {
-        playClickSound();
-        document.getElementById('chatWindow').style.display = 'none';
-        if (document.getElementById('selectContactScreen').style.display === 'block') {
-            document.getElementById('mainFab').style.display = 'none';
-        } else {
-            document.getElementById('mainFab').style.display = 'flex';
-        }
-        document.getElementById('chatInput').value = "";
-    }
+    playClickSound();
+    document.getElementById('chatWindow').style.display = 'none';
+    
+    // Force the main UI to show properly
+    document.getElementById('chatsScreen').classList.add('active');
+    document.getElementById('chatsHeader').style.display = 'flex';
+    document.getElementById('chatsActionBar').classList.remove('active');
+    
+    // Ensure the FAB is visible
+    document.getElementById('mainFab').style.display = 'flex';
+    
+    document.getElementById('chatInput').value = "";
+}
 // --- REPLY TO MESSAGE ---
 let replyingTo = null;
 let reactingToMsgId = null;
@@ -4337,18 +4350,48 @@ function toggleAuthMode() {
 }
 
 function handleGoogleLogin(response) {
-  fetch('/api/google-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: response.credential }) })
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) return document.getElementById('authError').innerText = data.error;
-      localStorage.setItem('wa_token', data.token);
-      localStorage.setItem('wa_user', JSON.stringify(data.user));
-      currentUser = data.user;
-      authToken = data.token;
-      afterLogin();
-    })
-    .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
+  // The credential comes directly from Google on desktop
+  const credential = response.credential || response;
+  if (!credential) return;
+
+  // Send to your backend to verify and get the JWT token
+  fetch('/api/google-login', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ credential: credential }) 
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) return document.getElementById('authError').innerText = data.error;
+    
+    // SAVE PERMANENTLY: Store the token so they never have to log in again
+    localStorage.setItem('wa_token', data.token);
+    localStorage.setItem('wa_user', JSON.stringify(data.user));
+    
+    currentUser = data.user;
+    authToken = data.token;
+    afterLogin(); // Smoothly transition to the chat screen
+  })
+  .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
 }
+function openMobileGoogleLogin() {
+    const clientId = '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com';
+    const redirectUri = 'com.weathertimer.app://oauth';
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile`;
+
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+        window.Capacitor.Plugins.Browser.open({ url: url });
+    } else {
+        window.location.href = url;
+    }
+}
+
+// Existing code below
+window.addEventListener('load', () => {
+  if (typeof google !== 'undefined') {
+    google.accounts.id.initialize({ client_id: '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com', callback: handleGoogleLogin });
+  }
+});
 window.addEventListener('load', () => {
   if (typeof google !== 'undefined') {
     google.accounts.id.initialize({ client_id: '1069432733269-1sql1v5ko7vb9917oeea308bu4hnun1i.apps.googleusercontent.com', callback: handleGoogleLogin });
@@ -7196,6 +7239,7 @@ socket.on('messagesRead', (data) => {
             });
         })();
 
+
     /* ==== MISSING FUNCTIONS PATCH ==== */
 function attachContact() {
   closeAttachSheet();
@@ -7228,6 +7272,28 @@ document.addEventListener('click', function(e){
   // attach sheet is already handling clicks via onclick
 });
 /* ==== END PATCH ==== */
+
+
+// 👇 PASTE THE DEEP LINK LISTENER RIGHT HERE 👇
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', (event) => {
+        if (event.url.includes('access_token')) {
+            const hash = event.url.split('#')[1];
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            
+            if (window.Capacitor.Plugins.Browser) {
+                window.Capacitor.Plugins.Browser.close();
+            }
+            
+            if (accessToken) {
+                handleGoogleLogin({ credential: accessToken });
+            }
+        }
+    });
+}
+// 👆 END OF DEEP LINK LISTENER 👆
+
 </script>
 </body>
 </html>
