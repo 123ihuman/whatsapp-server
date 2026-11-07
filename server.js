@@ -84,11 +84,12 @@ app.use('/api', (req, res, next) => {
 });
 // Status schema — auto-deletes after 24h via TTL index
 const statusSchema = new mongoose.Schema({
-    userId:   { type: String, required: true },
-    userName: { type: String, required: true },
-    mediaUrl: { type: String, required: true },
-    mediaType:{ type: String, enum: ['image', 'video'], required: true },
-    createdAt:{ type: Date, default: Date.now, expires: 86400 }
+    userId: String,
+    userName: String,
+    mediaUrl: String,
+    mediaType: String,
+    createdAt: { type: Date, default: Date.now, expires: 86400 }, // Auto-delete after 24h
+    views: [{ userId: String, userName: String, viewedAt: Date }] // 👈 ADD THIS LINE
 });
 const Status = mongoose.model('Status', statusSchema);
 
@@ -211,6 +212,31 @@ app.get('/api/status', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+// 1. Record a view
+app.post('/api/status/:id/view', async (req, res) => {
+  try {
+    const { userId, userName } = req.body;
+    const status = await Status.findById(req.params.id);
+    if (!status) return res.status(404).json({error: 'Not found'});
+    if (status.userId === userId) return res.json({ok: true}); // Don't record own views
+    
+    // Check if already viewed
+    const alreadyViewed = status.views.find(v => v.userId === userId);
+    if (!alreadyViewed) {
+      status.views.push({ userId, userName, viewedAt: new Date() });
+      await status.save();
+    }
+    res.json({ok: true});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+// 2. Get views for my status
+app.get('/api/status/:id/views', async (req, res) => {
+  try {
+    const status = await Status.findById(req.params.id);
+    res.json(status ? status.views.reverse() : []); // Newest first
+  } catch(e) { res.status(500).json({error: e.message}); }
 });
 
 // ---------- MESSAGE MEDIA UPLOAD ----------

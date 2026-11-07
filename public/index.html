@@ -2412,9 +2412,10 @@
 <!-- Status Viewer -->
 <div class="status-viewer" id="statusViewer">
     <div class="status-progress" id="statusProgress"></div>
-    <div class="status-viewer-header">
+        <div class="status-viewer-header">
         <div class="avatar" id="svAvatar">R</div>
         <div class="name" id="svName">Rahul Sharma</div>
+        <i class="fas fa-eye" id="statusViewEyeBtn" onclick="openStatusViewersList()" style="display:none; margin-right:20px; font-size:20px; cursor:pointer;"></i>
         <div class="close" onclick="closeStatusViewer()"><i class="fas fa-times"></i></div>
     </div>
     <div class="status-viewer-content" id="svContent"></div>
@@ -2532,6 +2533,17 @@
         </div>
     </div>
     <button class="privacy-cancel" onclick="closeTextStylePicker()">Cancel</button>
+  </div>
+</div>
+<!-- ================= STATUS VIEWERS LIST ================= -->
+<div class="privacy-sheet" id="statusViewersSheet" onclick="if(event.target===this)closeStatusViewersList()">
+  <div class="privacy-inner">
+    <div class="privacy-head">Viewed by</div>
+    <div class="privacy-sub" id="statusViewersCount">0 views</div>
+    <div class="privacy-options" id="statusViewersListBox" style="max-height: 50vh; overflow-y: auto;">
+        <!-- List will load here -->
+    </div>
+    <button class="privacy-cancel" onclick="closeStatusViewersList()">Close</button>
   </div>
 </div>
 <!-- ================= CHAT THEME PICKER ================= -->
@@ -4962,6 +4974,14 @@ let activeStatus = null;
     }
 function openStatusViewer(status) {
     activeStatus = status;
+    // Record the view if it's not my own status
+    if (status.userId !== getMyId()) {
+        fetch('/api/status/' + status._id + '/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: getMyId(), userName: getMyName() })
+        }).catch(()=>{});
+    }
     document.getElementById('svName').innerText = status.userName;
     document.getElementById('svAvatar').innerText = status.userName.charAt(0).toUpperCase();
     const content = document.getElementById('svContent');
@@ -4976,6 +4996,13 @@ function openStatusViewer(status) {
         content.appendChild(img);
     }
     document.getElementById('svTime').innerText = new Date(status.createdAt).toLocaleString();
+    // Show Eye icon only for my own status
+    const eyeBtn = document.getElementById('statusViewEyeBtn');
+    if (status.userId === getMyId()) {
+        eyeBtn.style.display = 'block';
+    } else {
+        eyeBtn.style.display = 'none';
+    }
     document.getElementById('statusViewer').classList.add('active');
     document.getElementById('statusProgress').innerHTML = '<div class="bar"><div class="fill" id="svFill"></div></div>';
     // 5-second auto-advance
@@ -5040,6 +5067,48 @@ function closeViewOnce(msgId) {
             renderMessage(m);    // draw again with locked state
         }
     }
+}
+async function openStatusViewersList() {
+    if (!activeStatus) return;
+    document.getElementById('statusViewersSheet').classList.add('active');
+    const box = document.getElementById('statusViewersListBox');
+    box.innerHTML = '<div style="text-align:center;padding:20px;color:#667781;">Loading...</div>';
+    
+    try {
+        const res = await fetch('/api/status/' + activeStatus._id + '/views');
+        const views = await res.json();
+        
+        document.getElementById('statusViewersCount').innerText = views.length + ' views';
+        box.innerHTML = '';
+        
+        if (views.length === 0) {
+            box.innerHTML = '<div style="text-align:center;padding:20px;color:#8696a0;">No views yet</div>';
+            return;
+        }
+        
+        views.forEach(v => {
+            const time = new Date(v.viewedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const el = document.createElement('div');
+            el.className = 'privacy-opt';
+            el.style.cursor = 'default';
+            el.innerHTML = `
+                <div class="avatar" style="background:#00a884;width:40px;height:40px;font-size:16px;margin-right:12px;">
+                    ${v.userName.charAt(0).toUpperCase()}
+                </div>
+                <div style="flex-grow:1;">
+                    <div style="font-size:16px;color:#111b21;">${v.userName}</div>
+                    <div style="font-size:12px;color:#667781;">Today at ${time}</div>
+                </div>
+            `;
+            box.appendChild(el);
+        });
+    } catch(e) {
+        box.innerHTML = '<div style="text-align:center;padding:20px;color:#e74c3c;">Failed to load</div>';
+    }
+}
+
+function closeStatusViewersList() {
+    document.getElementById('statusViewersSheet').classList.remove('active');
 }
 function closeStatusViewer() {
     clearTimeout(statusTimer);
