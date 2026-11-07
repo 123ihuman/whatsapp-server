@@ -7087,7 +7087,6 @@ async function loadContacts() {
         users = await res.json();
         localStorage.setItem('wa_cached_users', JSON.stringify(users));
     } catch (e) {
-        console.warn('Offline: loading cached contacts');
         const cached = localStorage.getItem('wa_cached_users');
         if (cached) users = JSON.parse(cached);
     }
@@ -7099,7 +7098,6 @@ async function loadContacts() {
     const meRow = document.createElement('div');
     meRow.className = 'chat-item';
     meRow.dataset.roomId = makeRoomId(getMyId(), getMyId());
-    meRow.dataset.filter = 'all';
     meRow.innerHTML = `
         <div class="avatar" style="background:#00a884;" onclick="event.stopPropagation();triggerAvatarUpload()">
             ${currentUser && currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="">` : 'My'}
@@ -7110,20 +7108,16 @@ async function loadContacts() {
         </div>`;
     meRow.onclick = () => openChatWindow(getMyName() + ' (You)', getMyId());
     chatList.appendChild(meRow);
-    meRow.dataset.pinned = '0';
 
     users.filter(u => u._id !== getMyId()).forEach(u => {
         const isOnline = onlineUserIds.includes(u._id.toString());
         const statusText = isOnline
             ? `<span class="online-dot"></span>online`
-            : (u.hideLastSeen
-                ? `<span class="offline-dot"></span>offline`
-                : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`);
+            : (u.hideLastSeen ? `<span class="offline-dot"></span>offline` : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`);
         const el = document.createElement('div');
         el.className = 'chat-item';
         const roomId = makeRoomId(getMyId(), u._id);
         el.dataset.roomId = roomId;
-        el.dataset.name = u.name;
 
         el.onclick = () => {
             if (typeof chatsSelectionMode !== 'undefined' && chatsSelectionMode) {
@@ -7140,13 +7134,6 @@ async function loadContacts() {
             }, 450);
         }, { passive: true });
         el.addEventListener('touchend', () => clearTimeout(lpTimer));
-        el.addEventListener('mousedown', () => {
-            lpTimer = setTimeout(() => {
-                if (typeof chatsSelectionMode !== 'undefined' && !chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
-            }, 450);
-        });
-        el.addEventListener('mouseup', () => clearTimeout(lpTimer));
-        el.addEventListener('mouseleave', () => clearTimeout(lpTimer));
 
         const avatarHtml = u.avatarUrl ? `<img src="${u.avatarUrl}" alt="">` : u.name.charAt(0).toUpperCase();
         el.innerHTML = `
@@ -7155,7 +7142,7 @@ async function loadContacts() {
                 <div class="chat-row-1"><span class="chat-name">${u.name}</span></div>
                 <div class="chat-row-2"><span class="chat-msg">${statusText}</span></div>
             </div>`;
-        const isPinned = prefs.pinned.includes(el.dataset.roomId);
+        const isPinned = prefs.pinned.includes(roomId);
         el.dataset.pinned = isPinned ? '1' : '0';
         if (isPinned) { const pin = document.createElement('i'); pin.className = 'fas fa-thumbtack pin-icon'; el.querySelector('.chat-row-2').appendChild(pin); }
         chatList.appendChild(el);
@@ -7165,26 +7152,22 @@ async function loadContacts() {
     refreshUnread();
 
     try {
-        const chatListEl = document.getElementById('chatList');
-        if (chatListEl) {
-            const gr = await fetch('/api/groups/' + getMyId());
-            const groups = await gr.json();
-            (groups || []).forEach(g => {
-                const groupItem = document.createElement('div');
-                groupItem.className = 'chat-item';
-                groupItem.dataset.roomId = g.groupId;
-                groupItem.dataset.group = '1';
-                const av = g.icon ? '<img src="' + g.icon + '" alt="">' : 'G';
-                groupItem.innerHTML = `
-                    <div class="avatar" style="background:#00a884;">${av}</div>
-                    <div class="chat-details">
-                        <div class="chat-row-1"><span class="chat-name">${g.name}</span></div>
-                        <div class="chat-row-2"><span class="chat-msg">${g.members.length} members</span></div>
-                    </div>`;
-                groupItem.onclick = () => openChatWindow(g.name, g.groupId);
-                chatListEl.appendChild(groupItem);
-            });
-        }
+        const gr = await fetch('/api/groups/' + getMyId());
+        const groups = await gr.json();
+        (groups || []).forEach(g => {
+            const groupItem = document.createElement('div');
+            groupItem.className = 'chat-item';
+            groupItem.dataset.roomId = g.groupId;
+            const av = g.icon ? '<img src="' + g.icon + '" alt="">' : 'G';
+            groupItem.innerHTML = `
+                <div class="avatar" style="background:#00a884;">${av}</div>
+                <div class="chat-details">
+                    <div class="chat-row-1"><span class="chat-name">${g.name}</span></div>
+                    <div class="chat-row-2"><span class="chat-msg">${g.members.length} members</span></div>
+                </div>`;
+            groupItem.onclick = () => openChatWindow(g.name, g.groupId);
+            chatList.appendChild(groupItem);
+        });
     } catch (e) { console.warn('load groups failed', e); }
 }
 /* ============ END BACK BUTTON ============ */
