@@ -779,6 +779,14 @@ app.post('/api/groups', async (req, res) => {
     res.json(g);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.get('/api/groups/:userId', async (req, res) => {
+  try { 
+      const list = await Group.find({ members: req.params.userId }); 
+      res.json(list); 
+  } catch (e) { 
+      res.status(500).json({ error: e.message }); 
+  }
+});
 app.get('/api/groups/info/:groupId', async (req, res) => {
   try { const g = await Group.findOne({ groupId: req.params.groupId }); res.json(g || {}); }
   catch (e) { res.status(500).json({ error: e.message }); }

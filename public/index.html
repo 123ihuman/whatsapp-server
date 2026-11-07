@@ -7367,21 +7367,20 @@ document.addEventListener('click', function(e){
 });
 /* ==== END PATCH ==== */
 
-
-// 👇 PASTE THE DEEP LINK LISTENER RIGHT HERE 👇
+// 👇 DEEP LINK LISTENER FOR GOOGLE LOGIN 👇
 if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
     window.Capacitor.Plugins.App.addListener('appUrlOpen', (event) => {
-        if (event.url.includes('access_token')) {
+        if (event.url.includes('id_token')) {
             const hash = event.url.split('#')[1];
             const params = new URLSearchParams(hash);
-                        const idToken = params.get('id_token'); // 👈 changed access_token to id_token
+            const idToken = params.get('id_token'); 
             
             if (window.Capacitor.Plugins.Browser) {
                 window.Capacitor.Plugins.Browser.close();
             }
             
-            if (idToken) { // 👈 changed accessToken to idToken
-                handleGoogleLogin({ credential: idToken }); // 👈 changed accessToken to idToken
+            if (idToken) { 
+                handleGoogleLogin({ credential: idToken }); 
             }
         }
     });
