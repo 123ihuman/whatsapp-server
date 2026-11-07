@@ -6,7 +6,6 @@
     <title>WhatsApp</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://unpkg.com/@capacitor/browser@8.0.0/dist/plugin.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -6865,17 +6864,9 @@ function applyFontSize(v) {
 (function initPrefs() {
     applySoundMuteUI();
   const t = localStorage.getItem('wa_theme');
-        // Force system dark mode on startup
+            // Force system dark mode on startup
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         applyDarkMode('on');
-    }
-    if (systemDark) {
-        document.body.style.background = '#0b141a';
-        document.querySelector('.app-container').style.background = '#111b21';
-        const tgl = document.getElementById('darkModeToggle');
-        if (tgl) { tgl.className = 'toggle on'; tgl.innerHTML = '<i class="fas fa-check"></i>'; }
-        const sub = document.getElementById('darkModeSub');
-        if (sub) sub.innerText = 'System (Dark)';
     }
   if (t) { const th = APP_THEMES.find(x => x.name === t); if (th) setTimeout(() => applyAppTheme(th.bg), 100); }
   const f = localStorage.getItem('wa_font');
