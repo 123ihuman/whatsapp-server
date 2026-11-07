@@ -4718,25 +4718,23 @@ async function loadStatuses() {
         const cached = localStorage.getItem('wa_cached_statuses');
         if (cached) list = JSON.parse(cached);
     }
-        const container = document.querySelector('#updatesScreen');
-        // remove existing rendered status items (but keep My Status + headers)
-        container.querySelectorAll('.status-item.dynamic').forEach(el => el.remove());
-        const anchor = container.querySelector('.status-section-title:nth-of-type(2)') || container.children[2];
-        list.forEach(s => {
-            const el = document.createElement('div');
-            el.className = 'status-item dynamic';
-            el.innerHTML = `
-                <div class="status-ring"><img src="${s.mediaUrl}" alt=""></div>
-                <div>
-                    <div class="name">${s.userName}</div>
-                    <div class="time">${new Date(s.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                </div>`;
-            el.onclick = () => openStatusViewer(s);
-            anchor.insertAdjacentElement('afterend', el);
-        });
-    } catch (err) {
-        console.warn('Could not load statuses:', err);
-    }
+
+    const container = document.querySelector('#updatesScreen');
+    container.querySelectorAll('.status-item.dynamic').forEach(el => el.remove());
+    const anchor = container.querySelector('.status-section-title:nth-of-type(2)') || container.children[2];
+    
+    list.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'status-item dynamic';
+        el.innerHTML = `
+            <div class="status-ring"><img src="${s.mediaUrl}" alt=""></div>
+            <div>
+                <div class="name">${s.userName}</div>
+                <div class="time">${new Date(s.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+            </div>`;
+        el.onclick = () => openStatusViewer(s);
+        anchor.insertAdjacentElement('afterend', el);
+    });
 }
 
 let statusTimer = null;
@@ -6599,119 +6597,92 @@ async function batchChatAction(action) {
 }
 /* ============ END CHAT SELECTION MODE ============ */
 async function loadContacts() {
+    let users = [];
     try {
         const res = await fetch('/api/users');
-        const users = await res.json();
-                const chatList = document.getElementById('chatList');
-        if (!chatList) { console.warn('chatList element not found'); return; }
-        chatList.innerHTML = '';
-
-        // Find my own record for the avatar
-        const me = users.find(u => u._id === getMyId());
-
-        // "My Number" entry — clicking avatar triggers upload, clicking row opens self-chat
-        const meRow = document.createElement('div');
-        meRow.className = 'chat-item';
-meRow.dataset.roomId = makeRoomId(getMyId(), getMyId());
-        meRow.dataset.filter = 'all';
-        meRow.innerHTML = `
-            <div class="avatar" style="background:#00a884;" onclick="event.stopPropagation();triggerAvatarUpload()">
-                ${currentUser && currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="">` : 'My'}
-            </div>
-            <div class="chat-details">
-                <div class="chat-row-1"><span class="chat-name">${getMyName()} (You)</span></div>
-                <div class="chat-row-2"><span class="chat-msg">Tap avatar to upload photo</span></div>
-            </div>`;
-        meRow.onclick = () => openChatWindow(getMyName() + ' (You)', getMyId());
-        chatList.appendChild(meRow);
-meRow.dataset.pinned = '0';
-
-                // Other users
-        users.filter(u => u._id !== getMyId()).forEach(u => {
-            const isOnline = onlineUserIds.includes(u._id.toString());
-            const statusText = isOnline
-                ? `<span class="online-dot"></span>online`
-                : (u.hideLastSeen
-                    ? `<span class="offline-dot"></span>offline`
-                    : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`);
-            const el = document.createElement('div');
-            el.className = 'chat-item';
-            const roomId = makeRoomId(getMyId(), u._id);
-            el.dataset.roomId = roomId;
-            el.dataset.name = u.name;
-
-            // Tap behaviour depends on selection mode
-            el.onclick = () => {
-                if (chatsSelectionMode) {
-                    toggleChatSelection(roomId, u.name, u._id);
-                } else {
-                    openChatWindow(u.name, u._id);
-                }
-            };
-
-            // Long-press to enter selection mode
-            let lpTimer = null, lpMoved = false;
-            el.addEventListener('touchstart', () => {
-                lpMoved = false;
-                lpTimer = setTimeout(() => {
-                    if (!chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
-                }, 450);
-            }, { passive: true });
-            el.addEventListener('touchmove', () => { lpMoved = true; clearTimeout(lpTimer); }, { passive: true });
-            el.addEventListener('touchend', () => clearTimeout(lpTimer));
-            el.addEventListener('mousedown', () => {
-                lpTimer = setTimeout(() => {
-                    if (!chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
-                }, 450);
-            });
-            el.addEventListener('mouseup', () => clearTimeout(lpTimer));
-            el.addEventListener('mouseleave', () => clearTimeout(lpTimer));
-            el.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                if (!chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
-            });
-
-            const avatarHtml = u.avatarUrl
-                ? `<img src="${u.avatarUrl}" alt="">`
-                : u.name.charAt(0).toUpperCase();
-            el.innerHTML = `
-                <div class="avatar" style="background:#00a884;">${avatarHtml}</div>
-                <div class="chat-details">
-                    <div class="chat-row-1"><span class="chat-name">${u.name}</span></div>
-                    <div class="chat-row-2"><span class="chat-msg">${statusText}</span></div>
-                </div>`;
-            const isPinned = prefs.pinned.includes(el.dataset.roomId);
-            el.dataset.pinned = isPinned ? '1' : '0';
-            if (isPinned) { const pin = document.createElement('i'); pin.className = 'fas fa-thumbtack pin-icon'; el.querySelector('.chat-row-2').appendChild(pin); }
-            chatList.appendChild(el);
-        });
-
-        applyChatFilter();
-refreshUnread();
-// Re-sort so pinned chats appear on top
-const rows = Array.from(chatList.children);
-rows.sort((a, b) => (b.dataset.pinned === '1' ? 1 : 0) - (a.dataset.pinned === '1' ? 1 : 0));
-chatList.innerHTML = '';
-rows.forEach(r => chatList.appendChild(r));
-// Archive toggle
-const arch = document.getElementById('archivedList');
-arch.innerHTML = '';
-const archivedRows = rows.filter(r => prefs.archived.includes(r.dataset.roomId));
-if (archivedRows.length > 0) {
-  const t = document.createElement('div');
-  t.className = 'archive-toggle';
-  t.innerHTML = '<i class="fas fa-archive"></i> <span>Archived (' + archivedRows.length + ')</span>';
-  t.onclick = () => { archivedRows.forEach(r => { r.style.display = r.style.display === 'none' ? '' : 'none'; r.classList.add('archived-item'); }); };
-  arch.appendChild(t);
-  archivedRows.forEach(r => { chatList.removeChild(r); r.style.display = 'none'; arch.appendChild(r); });
-}
-    } catch (err) {
-        console.warn('loadContacts failed:', err);
+        users = await res.json();
+        localStorage.setItem('wa_cached_users', JSON.stringify(users));
+    } catch (e) {
+        console.warn('Offline: loading cached contacts');
+        const cached = localStorage.getItem('wa_cached_users');
+        if (cached) users = JSON.parse(cached);
     }
-                // ============ LOAD GROUPS ============
-        try {
-            const chatList = document.getElementById('chatList');
-            if (!chatList) return;
+
+    const chatList = document.getElementById('chatList');
+    if (!chatList) return;
+    chatList.innerHTML = '';
+
+    const meRow = document.createElement('div');
+    meRow.className = 'chat-item';
+    meRow.dataset.roomId = makeRoomId(getMyId(), getMyId());
+    meRow.dataset.filter = 'all';
+    meRow.innerHTML = `
+        <div class="avatar" style="background:#00a884;" onclick="event.stopPropagation();triggerAvatarUpload()">
+            ${currentUser && currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="">` : 'My'}
+        </div>
+        <div class="chat-details">
+            <div class="chat-row-1"><span class="chat-name">${getMyName()} (You)</span></div>
+            <div class="chat-row-2"><span class="chat-msg">Tap avatar to upload photo</span></div>
+        </div>`;
+    meRow.onclick = () => openChatWindow(getMyName() + ' (You)', getMyId());
+    chatList.appendChild(meRow);
+    meRow.dataset.pinned = '0';
+
+    users.filter(u => u._id !== getMyId()).forEach(u => {
+        const isOnline = onlineUserIds.includes(u._id.toString());
+        const statusText = isOnline
+            ? `<span class="online-dot"></span>online`
+            : (u.hideLastSeen
+                ? `<span class="offline-dot"></span>offline`
+                : `<span class="offline-dot"></span>last seen ${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'unknown'}`);
+        const el = document.createElement('div');
+        el.className = 'chat-item';
+        const roomId = makeRoomId(getMyId(), u._id);
+        el.dataset.roomId = roomId;
+        el.dataset.name = u.name;
+
+        el.onclick = () => {
+            if (typeof chatsSelectionMode !== 'undefined' && chatsSelectionMode) {
+                toggleChatSelection(roomId, u.name, u._id);
+            } else {
+                openChatWindow(u.name, u._id);
+            }
+        };
+
+        let lpTimer = null;
+        el.addEventListener('touchstart', () => {
+            lpTimer = setTimeout(() => {
+                if (typeof chatsSelectionMode !== 'undefined' && !chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
+            }, 450);
+        }, { passive: true });
+        el.addEventListener('touchend', () => clearTimeout(lpTimer));
+        el.addEventListener('mousedown', () => {
+            lpTimer = setTimeout(() => {
+                if (typeof chatsSelectionMode !== 'undefined' && !chatsSelectionMode) enterChatsSelectionMode(roomId, u.name, u._id);
+            }, 450);
+        });
+        el.addEventListener('mouseup', () => clearTimeout(lpTimer));
+        el.addEventListener('mouseleave', () => clearTimeout(lpTimer));
+
+        const avatarHtml = u.avatarUrl ? `<img src="${u.avatarUrl}" alt="">` : u.name.charAt(0).toUpperCase();
+        el.innerHTML = `
+            <div class="avatar" style="background:#00a884;">${avatarHtml}</div>
+            <div class="chat-details">
+                <div class="chat-row-1"><span class="chat-name">${u.name}</span></div>
+                <div class="chat-row-2"><span class="chat-msg">${statusText}</span></div>
+            </div>`;
+        const isPinned = prefs.pinned.includes(el.dataset.roomId);
+        el.dataset.pinned = isPinned ? '1' : '0';
+        if (isPinned) { const pin = document.createElement('i'); pin.className = 'fas fa-thumbtack pin-icon'; el.querySelector('.chat-row-2').appendChild(pin); }
+        chatList.appendChild(el);
+    });
+
+    applyChatFilter();
+    refreshUnread();
+
+    try {
+        const chatListEl = document.getElementById('chatList');
+        if (chatListEl) {
             const gr = await fetch('/api/groups/' + getMyId());
             const groups = await gr.json();
             (groups || []).forEach(g => {
@@ -6719,133 +6690,19 @@ if (archivedRows.length > 0) {
                 groupItem.className = 'chat-item';
                 groupItem.dataset.roomId = g.groupId;
                 groupItem.dataset.group = '1';
-
-                const av = g.icon
-                    ? '<img src="' + g.icon + '" alt="">'
-                    : 'G';
-
+                const av = g.icon ? '<img src="' + g.icon + '" alt="">' : 'G';
                 groupItem.innerHTML = `
                     <div class="avatar" style="background:#00a884;">${av}</div>
                     <div class="chat-details">
                         <div class="chat-row-1"><span class="chat-name">${g.name}</span></div>
                         <div class="chat-row-2"><span class="chat-msg">${g.members.length} members</span></div>
                     </div>`;
-
                 groupItem.onclick = () => openChatWindow(g.name, g.groupId);
-                chatList.appendChild(groupItem);
+                chatListEl.appendChild(groupItem);
             });
-        } catch (e) { console.warn('load groups failed', e); }
-        // ============ END LOAD GROUPS ============
+        }
+    } catch (e) { console.warn('load groups failed', e); }
 }
-/* ============ ANDROID BACK BUTTON / EDGE SWIPE ============ */
-(function initBackButton() {
-    if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.App) return;
-    const App = window.Capacitor.Plugins.App;
-
-    App.addListener('backButton', () => {
-        // 1. Close any open modal / sheet first (in priority order)
-        if (document.getElementById('mediaCaptionSheet').classList.contains('active')) {
-            return closeMediaCaption();
-        }
-        if (document.getElementById('msgActionsSheet').classList.contains('active')) {
-            return closeMsgActions();
-        }
-        if (document.getElementById('privacySheet').classList.contains('active')) {
-            return closePrivacyPicker();
-        }
-        if (document.getElementById('pinSheet').classList.contains('active')) {
-            return cancelPinEntry();
-        }
-        if (document.getElementById('attachSheet').classList.contains('active')) {
-            return closeAttachSheet();
-        }
-        if (document.getElementById('statusEmojiPicker').classList.contains('active')) {
-            return closeStatusEmojiPicker();
-        }
-        if (document.getElementById('emojiPicker').classList.contains('active')) {
-            return document.getElementById('emojiPicker').classList.remove('active');
-        }
-        if (document.getElementById('reactionPicker').classList.contains('active')) {
-            return closeReactionPicker();
-        }
-        if (document.getElementById('waSheet').classList.contains('active')) {
-            return closeWhatsAppSheet();
-        }
-        if (document.getElementById('waPicker').classList.contains('active')) {
-            return closeWAContactPicker();
-        }
-        if (document.getElementById('forgotSheet').classList.contains('active')) {
-            return closeForgotPassword();
-        }
-        if (document.getElementById('statusViewer').classList.contains('active')) {
-            return closeStatusViewer();
-        }
-        if (document.getElementById('locationScreen').classList.contains('active')) {
-            return closeLocationScreen();
-        }
-        if (document.getElementById('liveDurationOverlay').classList.contains('active')) {
-            return closeLiveDurationPicker();
-        }
-        if (document.getElementById('cameraOverlay').classList.contains('active')) {
-            return closeCamera();
-        }
-        if (document.getElementById('qrScannerScreen').style.display === 'flex') {
-            return closeQrScanner();
-        }
-
-        // 2. Selection mode
-        if (typeof chatsSelectionMode !== 'undefined' && chatsSelectionMode) {
-            return exitChatsSelectionMode();
-        }
-
-        // 3. Standalone screens (contact info, group info, settings, etc.)
-        if (document.getElementById('newGroupScreen').classList.contains('active')) {
-            return closeNewGroupScreen();
-        }
-        if (document.getElementById('contactInfoScreen').classList.contains('active')) {
-            return closeContactInfo();
-        }
-        if (document.getElementById('groupInfoScreen').classList.contains('active')) {
-            return closeGroupInfo();
-        }
-        if (document.getElementById('disappearingPicker').classList.contains('active')) {
-            return closeDisappearingPicker();
-        }
-        if (document.getElementById('broadcastPicker').classList.contains('active')) {
-            return closeBroadcastPicker();
-        }
-        if (document.getElementById('starredScreen').classList.contains('active')) {
-            return closeStarredScreen();
-        }
-        if (document.getElementById('blockedScreen').classList.contains('active')) {
-            return closeBlockedScreen();
-        }
-        if (document.getElementById('settingsScreen').classList.contains('active')) {
-            return closeSettings();
-        }
-
-        // 4. Contact picker
-        if (document.getElementById('selectContactScreen').style.display === 'block') {
-            return closeSelectContact();
-        }
-
-        // 5. Chat window open → close it back to chat list
-        if (document.getElementById('chatWindow').style.display === 'flex') {
-            return closeChatWindow();
-        }
-
-        // 6. Three-dot menu open → close it
-        if (document.getElementById('threeDotMenu').style.display === 'block') {
-            return closeDrawer();
-        }
-        if (document.getElementById('chatMenu').classList.contains('active')) {
-            return closeChatMenu();
-        }
-
-        // 7. On home screen → exit the app
-        App.exitApp();
-    });
-})();
 /* ============ END BACK BUTTON ============ */
 socket.on('chatCleared',(d)=>{if(d.roomId===activeRoomId)document.getElementById('messagesArea').innerHTML='';});
 socket.on('messagesRead', (data) => {
