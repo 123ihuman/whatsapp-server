@@ -359,7 +359,7 @@
 }
 /* --- AUTH SCREEN --- */
 .auth-screen {
-    position: fixed; inset: 0; background: #fff; z-index: 10000;
+    position: fixed; inset: 0; background: #fff; z-index: 99999 !important;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 30px;
 }
@@ -4412,8 +4412,9 @@ function handleGoogleLogin(response) {
   .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
 }
 function openMobileGoogleLogin() {
-    const clientId = '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com'; 
-    const redirectUri = 'com.weathertimer.app://oauth'; 
+    const clientId = '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com';
+    // 👇 Use the Render URL for web testing
+    const redirectUri = 'https://whatsapp-server-e668.onrender.com'; 
     const scope = 'email profile';
     
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=${scope}&nonce=12345`;
@@ -4424,7 +4425,6 @@ function openMobileGoogleLogin() {
         window.location.href = url;
     }
 }
-
 // Existing code below
 window.addEventListener('load', () => {
   if (typeof google !== 'undefined') {
