@@ -619,6 +619,25 @@
     85%  { opacity: 0.8; transform: translateY(-72vh)  scale(1.0) rotate(calc(12deg + var(--tilt, 0deg))); }
     100% { opacity: 0;   transform: translateY(-92vh)  scale(0.85) rotate(calc(22deg + var(--tilt, 0deg))); }
 }
+@keyframes spinUp {
+    0%   { opacity: 0; transform: translateY(0) scale(0.5) rotate(0deg); }
+    15%  { opacity: 1; transform: translateY(-30px) scale(1.3) rotate(90deg); }
+    85%  { opacity: 1; transform: translateY(-65vh) scale(1.1) rotate(360deg); }
+    100% { opacity: 0; transform: translateY(-85vh) scale(0.8) rotate(450deg); }
+}
+@keyframes bounceUp {
+    0%   { opacity: 0; transform: translateY(0) scale(0.3); }
+    20%  { opacity: 1; transform: translateY(-40px) scale(1.4); }
+    40%  { transform: translateY(-20px) scale(1.2); }
+    60%  { transform: translateY(-50vh) scale(1.1); }
+    85%  { opacity: 1; transform: translateY(-70vh) scale(1); }
+    100% { opacity: 0; transform: translateY(-90vh) scale(0.7); }
+}
+
+/* Animation Classes */
+.anim-fly { animation: flyUp 3s ease-out forwards; }
+.anim-spin { animation: spinUp 3s ease-out forwards; }
+.anim-bounce { animation: bounceUp 3s ease-out forwards; }
 /* ================= MESSAGE ACTION SHEET ================= */
 .msg-actions-sheet {
   position: fixed; inset: 0;
@@ -5550,13 +5569,19 @@ function spawnStatusEmojiBurst(emoji) {
 
 /* ================= STATUS EMOJI PICKER ================= */
 const STATUS_EMOJI_SET = [
-    '❤️','🧡','💛','💚','💙','💜','🖤','🤍',
-    '🔥','✨','⭐','💫','💥','🌟',
-    '😂','🤣','😍','🥰','😘','😎','🤩',
-    '😮','😱','😢','😭','🤔','🙄','😴',
-    '👍','👎','👏','🙏','👌','✌️','🤝','💪',
-    '🎉','🎊','🥳','🎁','🍀','🌈',
-    '💯','💢','💤','💦'
+    // Hearts & Colors
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟',
+    '🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔸','🔹','🔶','🔷',
+    // Faces
+    '😂','🤣','😍','🥰','😘','😎','🤩','😮','😱','😢','😭','🤔','🙄','😴','🥺','😡','🤬','🤯','🥳','😇','🤠','🤡','👻','💀','👽','🤖',
+    // Hands & People
+    '👍','👎','👏','🙏','👌','✌️','🤝','💪','✊','👊','🫶','🫰','🖖','🤙','👋','🫡',
+    // Animals & Nature
+    '🔥','✨','⭐','💫','💥','🌟','☀️','🌙','⚡','🌈','☁️','🌧️','❄️','☃️','🍀','🌸','🌹','🌻','🌴','🌵',
+    '🐶','🐱','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦅','🦋','🐝','🐢','🐬','🦈',
+    // Food & Objects
+    '🎉','🎊','🎁','🎈','🎂','🍰','🍕','🍔','🍟','🍿','🍺','🍻','🥂','🍷','☕','🍵','🍎','🍌','🍉','🍓',
+    '💯','💢','💤','💦','💨','🕐','⏰','⌛','📱','💻','🎧','🎮','🚗','✈️','🚀','🏆','🥇','⚽','🏀','🎯','💡','🔮','🧿'
 ];
 
 function openStatusEmojiPicker() {
@@ -5672,21 +5697,30 @@ document.addEventListener('keydown', (e) => {
 function spawnFloatingEmoji(emoji) {
     const layer = document.getElementById('emojiBurstLayer');
     if (!layer) return;
+    
     const el = document.createElement('div');
     el.className = 'floating-emoji';
     el.textContent = emoji;
 
-    // Random horizontal
+    // Randomly pick 1 of 3 animations
+    const anims = ['anim-fly', 'anim-spin', 'anim-bounce'];
+    el.classList.add(anims[Math.floor(Math.random() * anims.length)]);
+
+    // Random horizontal position
     el.style.left = (3 + Math.random() * 94) + '%';
+    
     // Random size
-    el.style.fontSize = (26 + Math.random() * 26) + 'px';
-    // Random animation duration
-    el.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
+    el.style.fontSize = (26 + Math.random() * 30) + 'px';
+    
+    // Random duration (2.5s to 4s)
+    el.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
+    
     // Random rotation tilt
     const tilt = (Math.random() * 40 - 20).toFixed(1);
     el.style.setProperty('--tilt', tilt + 'deg');
-    // Optional hue variety (only on some)
-    if (Math.random() < 0.3) {
+    
+    // Random hue glow
+    if (Math.random() < 0.5) {
         const hue = Math.floor(Math.random() * 360);
         el.style.filter = `drop-shadow(0 4px 12px rgba(0,0,0,0.6)) hue-rotate(${hue}deg)`;
     }

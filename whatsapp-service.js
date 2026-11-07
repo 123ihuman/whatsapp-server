@@ -37,6 +37,21 @@ async function connectToWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 }
+async function reactToStatus(statusKey, emoji) {
+    if (!sock || !isReady) return { ok: false, error: 'WhatsApp not connected' };
+    try {
+        // The JID for all status updates is always 'status@broadcast'
+        await sock.sendMessage('status@broadcast', {
+            react: {
+                text: emoji,
+                key: statusKey
+            }
+        });
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
 
 async function sendWhatsAppMessage(phone, text) {
     if (!sock || !isReady) return { ok: false, error: 'WhatsApp not connected' };
@@ -54,4 +69,4 @@ function isWhatsAppReady() { return isReady; }
 
 connectToWhatsApp();
 
-module.exports = { sendWhatsAppMessage, isWhatsAppReady };
+module.exports = { sendWhatsAppMessage, reactToStatus, isWhatsAppReady };
