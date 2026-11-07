@@ -5064,6 +5064,7 @@ async function uploadStatus(event) {
         formData.append('userId', getMyId());
     formData.append('userName', getMyName());
     formData.append('mediaType', mediaType);
+    formData.append('phone', currentUser.identifier || ''); 
 
     try {
         const res = await fetch('/api/status', { method: 'POST', body: formData });
@@ -5549,16 +5550,24 @@ function sendStatusReaction(emoji, btnEl) {
     // Close picker if open
     closeStatusEmojiPicker();
     // Broadcast to other viewers of this status (optional)
-    if (activeStatus && socket) {
+       if (activeStatus && socket) {
+        // Internal app notification
         socket.emit('statusReaction', {
             statusId: activeStatus._id,
             userId: getMyId(),
             userName: getMyName(),
             emoji
         });
-    }
-}
 
+        // Send to Real WhatsApp if we have their number!
+        if (activeStatus.phone) {
+            fetch('/api/status-react-whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: activeStatus.phone, emoji: emoji })
+            }).catch(e => console.warn('WhatsApp reaction failed', e));
+        }
+    }
 function spawnStatusEmojiBurst(emoji) {
     const layer = document.getElementById('emojiBurstLayer');
     if (!layer) return;

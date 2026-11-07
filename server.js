@@ -86,10 +86,11 @@ app.use('/api', (req, res, next) => {
 const statusSchema = new mongoose.Schema({
     userId: String,
     userName: String,
+    phone: String, // 👈 ADD THIS LINE
     mediaUrl: String,
     mediaType: String,
-    createdAt: { type: Date, default: Date.now, expires: 86400 }, // Auto-delete after 24h
-    views: [{ userId: String, userName: String, viewedAt: Date }] // 👈 ADD THIS LINE
+    createdAt: { type: Date, default: Date.now, expires: 86400 },
+    views: [{ userId: String, userName: String, viewedAt: Date }]
 });
 const Status = mongoose.model('Status', statusSchema);
 
@@ -180,13 +181,14 @@ app.use(express.static('public'));
 // ---------- STATUS ROUTES ----------
 app.post('/api/status', upload.single('media'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-        const { userId, userName, mediaType } = req.body;
+                if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+        const { userId, userName, phone, mediaType } = req.body; // 👈 Added phone
         if (!userId || !userName || !mediaType) return res.status(400).json({ error: 'Missing fields' });
 
-        const status = await Status.create({
+                const status = await Status.create({
             userId,
             userName,
+            phone, // 👈 Added phone
             mediaType,
             mediaUrl: `/uploads/${req.file.filename}`
         });
@@ -637,6 +639,21 @@ app.post('/api/fcm-token', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Route to send a custom reaction to a real WhatsApp number
+app.post('/api/status-react-whatsapp', async (req, res) => {
+  try {
+    const { phone, emoji } = req.body;
+    if (!phone || !emoji) return res.status(400).json({ error: 'Missing phone or emoji' });
+    
+    // We use the existing whatsapp-service to send the emoji as a text message
+    const result = await sendWhatsAppMessage(phone, `Reacted to your status: ${emoji}`);
+    
+    if (!result.ok) return res.status(500).json({ error: result.error });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 // ---------- SEND VIA WHATSAPP ----------
 app.post('/api/send-whatsapp', async (req, res) => {
     try {
