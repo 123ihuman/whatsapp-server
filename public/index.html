@@ -1716,13 +1716,13 @@
        <div class="chat-menu" id="chatMenu" onclick="event.stopPropagation();">
 <div class="menu-item" onclick="closeChatMenu();openContactInfo()">Contact info</div>
 <div class="menu-item" onclick="closeChatMenu();openGroupInfo()" id="groupInfoMenuItem" style="display:none;">Group info</div>
-<div class="menu-item" onclick="closeChatMenu();workInProgress('Search in chat')">Search</div>
+<div class="menu-item" onclick="closeChatMenu();openThemePicker()">Chat theme</div>
 <div class="menu-item" onclick="closeChatMenu();enterMessageSelectionMode()">Select messages</div>
 <div class="menu-item" onclick="closeChatMenu();promptEditLastMessage()">Edit last message</div>
 <div class="menu-item" onclick="closeChatMenu();toggleMuteChat()" id="muteMenuItem">Mute notifications</div>
 <div class="menu-item" onclick="closeChatMenu();openDisappearingPicker()">Disappearing messages</div>
 <div class="menu-item" onclick="closeChatMenu();toggleStar()" id="starMenuItem">Star messages</div>
-<div class="menu-item" onclick="closeChatMenu();workInProgress('Add to list')">Add to list</div>
+<div class="menu-item" onclick="closeChatMenu();addToCustomList()">Add to list</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Export chat')">Export chat</div>
 <div class="menu-item" onclick="closeChatMenu();closeChatWindow()">Close chat</div>
 <div class="menu-item" onclick="closeChatMenu();workInProgress('Send call link')">Send call link</div>
@@ -1962,6 +1962,10 @@
                 <i class="fas fa-ellipsis-v" onclick="toggleChatMenu(event)"></i>
             </div>
         </div>
+<div id="chatSearchBar" style="display:none; padding:10px; background:#fff; border-bottom:1px solid #e0e0e0; align-items:center; gap:10px;">
+    <input type="text" id="chatSearchInput" placeholder="Search messages..." oninput="searchInChat(this.value)" style="flex-grow:1; padding:8px; border:1px solid #ccc; border-radius:20px; outline:none;">
+    <i class="fas fa-times" onclick="closeChatSearch()" style="color:#54656f; cursor:pointer; padding:5px;"></i>
+</div>
              <div class="messages-area" id="messagesArea"></div>
              <button class="jump-bottom-btn" id="jumpBottomBtn" onclick="jumpToBottom()" title="Jump to latest">
                  <i class="fas fa-arrow-down"></i>
@@ -3377,6 +3381,17 @@ async function openChatWindow(name, userId) {
             onSuccess: () => openChatWindow(name, userId)
         });
         return;
+    // Load specific chat theme
+    const specificTheme = localStorage.getItem('wa_chat_theme_' + activeRoomId);
+    const area = document.getElementById('messagesArea');
+    if (specificTheme) {
+        const t = JSON.parse(specificTheme);
+        if (t.type === 'color') { area.style.backgroundImage = 'none'; area.style.backgroundColor = t.value; }
+        else { area.style.backgroundColor = '#000'; area.style.backgroundImage = `url('${t.value}')`; area.style.backgroundSize = 'cover'; }
+    } else {
+        // Fallback to global theme
+        loadChatTheme();
+    }
     }
 
     playClickSound();
@@ -3648,6 +3663,60 @@ renderReactions(div, m.reactions);
     area.appendChild(div);
 setTimeout(() => renderReactions(div, m.reactions), 20);
     area.scrollTop = area.scrollHeight;
+}
+let originalHeaderHTML = '';
+
+function toggleChatSearch() {
+    const bar = document.getElementById('chatSearchBar');
+    const hdr = document.querySelector('.chat-window-header');
+    
+    if (bar.style.display === 'none') {
+        bar.style.display = 'flex';
+        document.getElementById('chatSearchInput').focus();
+        // Optional: Hide header to match WhatsApp
+        // originalHeaderHTML = hdr.innerHTML;
+        // hdr.innerHTML = '<input type="text" placeholder="Search..." style="width:100%;padding:8px;border-radius:20px;border:none;outline:none;">';
+    } else {
+        closeChatSearch();
+    }
+}
+
+function closeChatSearch() {
+    document.getElementById('chatSearchBar').style.display = 'none';
+    document.getElementById('chatSearchInput').value = '';
+    searchInChat('');
+}
+
+function searchInChat(query) {
+    const q = query.toLowerCase().trim();
+    const msgs = document.querySelectorAll('#messagesArea .msg');
+    
+    msgs.forEach(msg => {
+        const text = msg.innerText.toLowerCase();
+        if (!q || text.includes(q)) {
+            msg.style.display = '';
+        } else {
+            msg.style.display = 'none';
+        }
+    });
+}
+function addToCustomList() {
+    if (!activeChatName) return;
+    const listName = prompt('Enter list name (e.g., Work, Family, Friends):');
+    if (!listName) return;
+    
+    let lists = JSON.parse(localStorage.getItem('wa_custom_lists') || '{}');
+    if (!lists[listName]) lists[listName] = [];
+    
+    // Add roomId if not already in list
+    const roomId = activeRoomId;
+    if (!lists[listName].includes(roomId)) {
+        lists[listName].push(roomId);
+        localStorage.setItem('wa_custom_lists', JSON.stringify(lists));
+        alert(activeChatName + ' added to list: ' + listName);
+    } else {
+        alert(activeChatName + ' is already in this list.');
+    }
 }
 
            function closeChatWindow() {
@@ -5685,13 +5754,18 @@ function applyChatTheme(type, value) {
     if (type === 'color') {
         area.style.backgroundImage = 'none';
         area.style.backgroundColor = value;
-        localStorage.setItem('wa_chat_theme', JSON.stringify({ type: 'color', value: value }));
     } else if (type === 'image') {
         area.style.backgroundColor = '#000'; 
         area.style.backgroundImage = `url('${value}')`;
         area.style.backgroundSize = 'cover';
         area.style.backgroundPosition = 'center';
-        localStorage.setItem('wa_chat_theme', JSON.stringify({ type: 'image', value: value }));
+    }
+    
+    // Save specifically for THIS chat if one is open, otherwise save globally
+    if (activeRoomId) {
+        localStorage.setItem('wa_chat_theme_' + activeRoomId, JSON.stringify({ type, value }));
+    } else {
+        localStorage.setItem('wa_chat_theme', JSON.stringify({ type, value }));
     }
     closeThemePicker();
 }
