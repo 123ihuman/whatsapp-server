@@ -1656,7 +1656,7 @@ body.dark-mode .chat-menu .menu-item,
 body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-color: #111b21 !important; }
 
 #wa_web_initial_startup{
-  position:fixed; inset:0; z-index:99999;
+    position:fixed; inset:0; z-index:9999999;
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
   background:var(--splashscreen-startup-background);
@@ -1706,6 +1706,10 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
   opacity:0; animation:__rise .5s ease .45s both;
 }
 #wa_web_initial_startup ._apds span{ display:flex; align-items:center; }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 @keyframes __rise{
   from{ opacity:0; transform:translateY(8px); }
   to  { opacity:1; transform:translateY(0); }
@@ -1732,9 +1736,12 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
     </span>
   </div>
   <div class="_apdr">WhatsApp</div>
-  <div class="_apdq">
+  <div class="_apdq" style="display:flex; flex-direction:column; align-items:center; gap:20px;">
+    <!-- Circular Spinner -->
+    <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top: 4px solid #00a884; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <!-- Progress Bar -->
     <progress value="0" max="100" dir="ltr"></progress>
-  </div>
+</div>
   <div class="_apds">
     <span>
       <svg width="17" height="17" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -5118,7 +5125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.style.background = '#d1d7db';
             }
         }
-       }, 1700);
+       }, 2000); // 👈 Change to 2000ms
 })(); // 👈 THIS CLOSES THE SPLASH SCREEN FUNCTION
 // --- WEBRTC SETUP ---
 const rtcConfig = {
