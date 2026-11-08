@@ -1753,7 +1753,7 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
     <span style="color:#667781; font-size:13px;">OR</span>
 </div>
 <div id="phoneLoginBox" style="display:flex; gap:10px; margin-top:10px;">
-    <input type="tel" id="authPhone" placeholder="+91 9876543210" style="flex-grow:1; padding:14px 16px; border:1px solid #ddd; border-radius:8px; font-size:16px; outline:none;">
+    <input type="tel" id="authPhone" placeholder="9876543210" maxlength="10" style="flex-grow:1; padding:14px 16px; border:1px solid #ddd; border-radius:8px; font-size:16px; outline:none;">
     <button onclick="sendPhoneOTP()" style="width:auto; padding:0 20px; border-radius:8px; margin-top:0;">Send OTP</button>
 </div>
 <div id="otpBox" style="display:none; margin-top:10px;">
@@ -4563,8 +4563,15 @@ if (!firebase.apps.length) {
 let confirmationResult = null;
 
 function sendPhoneOTP() {
-    const phone = document.getElementById('authPhone').value.trim();
-    if (!phone) return alert("Please enter a valid phone number with country code.");
+    let phone = document.getElementById('authPhone').value.trim();
+    
+    // 1. Enforce exactly 10 digits
+    if (phone.length !== 10) {
+        return alert("Please enter exactly a 10-digit mobile number.");
+    }
+    
+    // 2. Automatically prepend +91 for India
+    phone = "+91" + phone;
     
     // Show loading
     const btn = event.target;
