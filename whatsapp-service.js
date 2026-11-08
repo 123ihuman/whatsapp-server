@@ -10,10 +10,10 @@ let isReady = false;
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
 
-    sock = makeWASocket({
+        sock = makeWASocket({
         auth: state,
-        browser: ['Ubuntu', 'Chrome', '20.0.04']
-        // No printQRInTerminal — we handle it manually below
+        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+        syncFullHistory: true // 👈 THIS IS THE MAGIC LINE
     });
 
     sock.ev.on('connection.update', (update) => {

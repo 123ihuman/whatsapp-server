@@ -4547,7 +4547,7 @@ function handleGoogleLogin(response) {
 
 // ============ FIREBASE PHONE LOGIN ============
 const firebaseConfig = {
-  apiKey: "AIzaSyDvNlyukv881auDMcRE4ynJVM4kYpQQdrA",
+  apiKey: "AIzaSyD6vNyukv88IauDmdRe4yn_zW4k9pOq6rA",
   authDomain: "whatsapp-pro-clone.firebaseapp.com",
   projectId: "whatsapp-pro-clone",
   storageBucket: "whatsapp-pro-clone.firebasestorage.app",
@@ -4595,21 +4595,26 @@ function verifyPhoneOTP() {
     const otp = document.getElementById('authOtp').value.trim();
     if (!otp) return alert("Enter the OTP");
     
-    const btn = event.target;
+    const btn = document.querySelector('#otpBox button');
     btn.innerText = "Verifying...";
     btn.disabled = true;
 
     confirmationResult.confirm(otp).then((result) => {
+        // Get the Firebase ID Token
         return result.user.getIdToken();
     }).then((idToken) => {
+        // Send to our backend
         fetch('/api/firebase-phone-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ credential: idToken })
         })
-        .then(r => r.json())
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || 'Server rejected token');
+            return data;
+        })
         .then(data => {
-            if (data.error) throw new Error(data.error);
             localStorage.setItem('wa_token', data.token);
             localStorage.setItem('wa_user', JSON.stringify(data.user));
             currentUser = data.user;
