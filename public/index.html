@@ -4594,8 +4594,8 @@ function sendPhoneOTP() {
             alert("Error: " + error.message);
             btn.innerText = "Send OTP";
             btn.disabled = false;
-        });
-}
+        }); // 👈 THIS WAS MISSING
+} // 👈 THIS WAS MISSING
 
 function verifyPhoneOTP() {
     const otp = document.getElementById('authOtp').value.trim();
@@ -4606,10 +4606,8 @@ function verifyPhoneOTP() {
     btn.disabled = true;
 
     confirmationResult.confirm(otp).then((result) => {
-        // User is signed in Firebase! Get their ID Token
         return result.user.getIdToken();
     }).then((idToken) => {
-        // Send the token to our backend to login/signup
         fetch('/api/firebase-phone-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4633,8 +4631,8 @@ function verifyPhoneOTP() {
         alert("Invalid OTP: " + error.message);
         btn.innerText = "Verify OTP & Login";
         btn.disabled = false;
-    });
-}
+    }); // 👈 THIS WAS MISSING
+} // 👈 THIS WAS MISSING
 // ============ END FIREBASE PHONE LOGIN ============
 function openMobileGoogleLogin() {
     const clientId = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
