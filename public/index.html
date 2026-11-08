@@ -4725,23 +4725,36 @@ function afterLogin() {
     // 1. Hide Login Screen
     document.getElementById('authScreen').style.display = 'none';
     
-    // 2. FORCE show the app container
+    // 2. FORCE show the app container (THIS IS THE LINE YOU WERE MISSING)
     const appContainer = document.querySelector('.app-container');
-    appContainer.style.display = 'block';
+    if (appContainer) {
+        appContainer.style.display = 'block';
+    }
 
-    // 3. FORCE standard background color to prevent pitch black
+    // 3. Force background color to prevent pitch black
     document.body.classList.remove('dark-mode');
     document.body.style.background = '#d1d7db';
 
-    // 4. Safely load data (wrapped in try/catch so it NEVER freezes the UI)
+    // 4. Show loading text immediately so you know it's working
+    const chatList = document.getElementById('chatList');
+    if (chatList) chatList.innerHTML = '<div style="text-align:center; padding:20px; color:#667781;">Loading chats...</div>';
+
+    // 5. Safely load data
     setTimeout(() => {
         try { loadContacts(); } catch(e) { console.error("Contacts error:", e); }
         try { loadStatuses(); } catch(e) { console.error("Status error:", e); }
-    }, 50);
+    }, 100);
 
-    console.log('✅ Logged in as', currentUser.name);
-    if (socket.connected) socket.emit('userOnline', currentUser.id);
-    requestNotificationPermission();
+    const name = (currentUser && currentUser.name) ? currentUser.name : 'User';
+    const id = (currentUser && currentUser.id) ? currentUser.id : null;
+
+    console.log('✅ Logged in as', name);
+    
+    if (socket.connected && id) {
+        socket.emit('userOnline', id);
+    }
+    
+    try { requestNotificationPermission(); } catch(e) {}
     setInterval(refreshUnread, 15000);
 
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
