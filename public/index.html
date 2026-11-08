@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
@@ -1746,6 +1748,18 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
         <input type="email" id="authBackupEmail" placeholder="Backup email (for password reset)" style="display:none">
         <input type="password" id="authPassword" placeholder="Password">
         <button id="authBtn" onclick="doAuth()">Sign in</button>
+<!-- Phone Login Section -->
+<div style="margin-top:15px; text-align:center;">
+    <span style="color:#667781; font-size:13px;">OR</span>
+</div>
+<div id="phoneLoginBox" style="display:flex; gap:10px; margin-top:10px;">
+    <input type="tel" id="authPhone" placeholder="+91 9876543210" style="flex-grow:1; padding:14px 16px; border:1px solid #ddd; border-radius:8px; font-size:16px; outline:none;">
+    <button onclick="sendPhoneOTP()" style="width:auto; padding:0 20px; border-radius:8px; margin-top:0;">Send OTP</button>
+</div>
+<div id="otpBox" style="display:none; margin-top:10px;">
+    <input type="text" id="authOtp" placeholder="Enter 6-digit OTP" maxlength="6" style="width:100%; padding:14px 16px; border:1px solid #ddd; border-radius:8px; font-size:16px; outline:none; margin-bottom:10px;">
+    <button onclick="verifyPhoneOTP()" style="width:100%; padding:14px; background:#00a884; color:white; border:none; border-radius:25px; font-size:16px; font-weight:500; cursor:pointer;">Verify OTP & Login</button>
+</div>
 <button onclick="openMobileGoogleLogin()" style="width:100%; background:#fff; border:1px solid #ddd; padding:12px; border-radius:24px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; margin-top:14px; color:#3c4043; font-weight:600; font-size:15px;">
     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" width="20">
     Sign in with Google
@@ -4530,6 +4544,91 @@ function handleGoogleLogin(response) {
   });
 }
 
+// ============ FIREBASE PHONE LOGIN ============
+// 👇 PASTE YOUR FIREBASE CONFIG HERE 👇
+const firebaseConfig = {
+  apiKey: "AIzaSyDvNlyukv881auDMcRE4ynJVM4kYpQQdrA",
+  authDomain: "whatsapp-pro-clone.firebaseapp.com",
+  projectId: "whatsapp-pro-clone",
+  storageBucket: "whatsapp-pro-clone.firebasestorage.app",
+  messagingSenderId: "1055260871265",
+  appId: "1:1055260871265:web:0197e495097cdc626db820"
+};
+
+// Initialize Firebase (Only if not already initialized)
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+let confirmationResult = null;
+
+function sendPhoneOTP() {
+    const phone = document.getElementById('authPhone').value.trim();
+    if (!phone) return alert("Please enter a valid phone number with country code.");
+    
+    // Show loading
+    const btn = event.target;
+    btn.innerText = "Sending...";
+    btn.disabled = true;
+
+    // Setup invisible reCAPTCHA
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('authBtn', {
+        'size': 'invisible',
+        'callback': function(response) {}
+    });
+
+    firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier)
+        .then((result) => {
+            confirmationResult = result;
+            document.getElementById('phoneLoginBox').style.display = 'none';
+            document.getElementById('otpBox').style.display = 'block';
+            alert("OTP Sent to " + phone);
+        }).catch((error) => {
+            alert("Error: " + error.message);
+            btn.innerText = "Send OTP";
+            btn.disabled = false;
+        });
+}
+
+function verifyPhoneOTP() {
+    const otp = document.getElementById('authOtp').value.trim();
+    if (!otp) return alert("Enter the OTP");
+    
+    const btn = event.target;
+    btn.innerText = "Verifying...";
+    btn.disabled = true;
+
+    confirmationResult.confirm(otp).then((result) => {
+        // User is signed in Firebase! Get their ID Token
+        return result.user.getIdToken();
+    }).then((idToken) => {
+        // Send the token to our backend to login/signup
+        fetch('/api/firebase-phone-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: idToken })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            
+            localStorage.setItem('wa_token', data.token);
+            localStorage.setItem('wa_user', JSON.stringify(data.user));
+            currentUser = data.user;
+            authToken = data.token;
+            afterLogin();
+        }).catch((err) => {
+            alert("Backend error: " + err.message);
+            btn.innerText = "Verify OTP & Login";
+            btn.disabled = false;
+        });
+    }).catch((error) => {
+        alert("Invalid OTP: " + error.message);
+        btn.innerText = "Verify OTP & Login";
+        btn.disabled = false;
+    });
+}
+// ============ END FIREBASE PHONE LOGIN ============
 function openMobileGoogleLogin() {
     const clientId = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
     const redirectUri = 'https://whatsapp-server-e668.onrender.com/oauth'; // 👈 EXACT MATCH

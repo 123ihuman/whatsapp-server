@@ -480,6 +480,36 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
+// Firebase Phone Login
+app.post('/api/firebase-phone-login', async (req, res) => {
+    try {
+        const { credential } = req.body;
+        if (!credential) return res.status(400).json({ error: 'No token provided' });
+
+        // Verify the token with Firebase Admin
+        const decodedToken = await admin.auth().verifyIdToken(credential);
+        const phone = decodedToken.phone_number;
+        
+        if (!phone) return res.status(400).json({ error: 'No phone number in token' });
+
+        // Check if user exists
+        let user = await User.findOne({ identifier: phone });
+        if (!user) {
+            // Create new user if they don't exist
+            user = await User.create({
+                identifier: phone,
+                name: phone, // Default name
+                password: 'firebase_otp_user' // Dummy password
+            });
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });
+        res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier, avatarUrl: user.avatarUrl } });
+    } catch (e) {
+        console.error('Firebase auth error:', e);
+        res.status(401).json({ error: 'Invalid Firebase token' });
+    }
+});
 app.post('/api/google-login', async (req, res) => {
   try {
     const { credential } = req.body;
