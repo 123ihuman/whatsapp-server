@@ -4761,10 +4761,9 @@ function afterLogin() {
     try { loadStatuses(); } catch(e) {}
     try { requestNotificationPermission(); } catch(e) {}
 
-    if (socket.connected && currentUser) {
+       if (socket.connected && currentUser) {
         socket.emit('userOnline', currentUser.id);
     }
-}
 
     // Register push notifications (Moved safely INSIDE the function)
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
