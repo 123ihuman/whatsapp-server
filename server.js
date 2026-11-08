@@ -107,7 +107,9 @@ const messageSchema = new mongoose.Schema({
     reactions: { type: mongoose.Schema.Types.Mixed, default: {} },
     edited:    { type: Boolean, default: false },
     forwarded: { type: Boolean, default: false },
-    read:      { type: Boolean, default: false },
+        read:      { type: Boolean, default: false },
+    readBy:    [{ userId: String, readAt: Date }], // 👈 ADDED FOR MESSAGE INFO
+    pinned:    { type: Boolean, default: false },  // 👈 ADDED FOR PINNING
     deleted:   { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, default: null, index: { expires: 0 } }
@@ -298,11 +300,24 @@ app.get('/api/messages/:roomId', async (req, res) => {
 app.post('/api/messages/read', async (req, res) => {
     try {
         const { roomId, userId } = req.body;
-        await Message.updateMany(
-            { roomId, sender: { $ne: userId }, read: false },
-            { $set: { read: true } }
-        );
+        
+        // Find messages in this room that I haven't read yet
+        const unreadMsgs = await Message.find({ 
+            roomId, 
+            sender: { $ne: userId }, // Don't mark my own messages as read
+            'readBy.userId': { $ne: userId } // Check if my ID is NOT already in the readBy array
+        });
+        
+        // Update them one by one
+        for (let msg of unreadMsgs) {
+            msg.read = true;
+            msg.readBy.push({ userId: userId, readAt: new Date() });
+            await msg.save();
+        }
+        
+        // Tell the sender that the messages were read (Blue Ticks)
         io.to(roomId).emit('messagesRead', { roomId });
+        
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

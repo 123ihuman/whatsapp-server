@@ -2647,6 +2647,17 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
     </div>
   </div>
 </div>
+<!-- ================= MESSAGE INFO SHEET ================= -->
+<div class="privacy-sheet" id="msgInfoSheet" onclick="if(event.target===this)closeMsgInfo()">
+  <div class="privacy-inner">
+    <div class="privacy-head">Message info</div>
+    <div class="privacy-sub" id="msgInfoStatus">Delivered</div>
+    <div class="privacy-options" id="msgInfoList" style="max-height: 50vh; overflow-y: auto;">
+        <!-- Read receipts go here -->
+    </div>
+    <button class="privacy-cancel" onclick="closeMsgInfo()">Close</button>
+  </div>
+</div>
 <!-- ================= PRIVACY PICKER ================= -->
 <div class="privacy-sheet" id="privacySheet" onclick="if(event.target===this)closePrivacyPicker()">
   <div class="privacy-inner">
@@ -3880,6 +3891,9 @@ function openMsgActions(m, el) {
       navigator.clipboard.writeText(m.text).then(() => alert('Copied'));
     }});
   }
+  items.push({ icon:'fa-info-circle', label:'Info', act: () => {
+    showMessageInfo(m);
+  }});
 
   items.push({ icon:'fa-share', label:'Forward', act: () => {
     forwardMessage(m);
@@ -3911,6 +3925,61 @@ function openMsgActions(m, el) {
   document.getElementById('msgActionsSheet').classList.add('active');
 }
 
+async function showMessageInfo(m) {
+    document.getElementById('msgInfoSheet').classList.add('active');
+    document.getElementById('msgInfoStatus').innerText = 'Loading...';
+    const list = document.getElementById('msgInfoList');
+    list.innerHTML = '';
+
+    try {
+        // Fetch fresh message data from the backend
+        const res = await fetch('/api/messages/' + m.roomId);
+        const msgs = await res.json();
+        const freshMsg = msgs.find(x => x._id === m._id);
+
+        if (!freshMsg) return;
+
+        const readBy = freshMsg.readBy || [];
+        
+        if (readBy.length === 0) {
+            document.getElementById('msgInfoStatus').innerText = 'Delivered. Not read yet.';
+            return;
+        }
+
+        document.getElementById('msgInfoStatus').innerText = 'Read by ' + readBy.length + ' people';
+
+        // Fetch user names
+        const usersRes = await fetch('/api/users');
+        const users = await usersRes.json();
+
+        readBy.forEach(r => {
+            const u = users.find(x => x._id === r.userId);
+            const name = u ? u.name : 'User';
+            const time = new Date(r.readAt).toLocaleString([], {hour:'2-digit', minute:'2-digit'});
+            
+            const el = document.createElement('div');
+            el.className = 'privacy-opt';
+            el.style.cursor = 'default';
+            el.innerHTML = `
+                <div class="avatar" style="background:#00a884;width:40px;height:40px;font-size:16px;margin-right:12px;">
+                    ${name.charAt(0).toUpperCase()}
+                </div>
+                <div style="flex-grow:1;">
+                    <div style="font-size:16px;color:#111b21;">${name}</div>
+                    <div style="font-size:12px;color:#667781;">Read at ${time}</div>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+
+    } catch(e) {
+        document.getElementById('msgInfoStatus').innerText = 'Failed to load info.';
+    }
+}
+
+function closeMsgInfo() {
+    document.getElementById('msgInfoSheet').classList.remove('active');
+}
 function closeMsgActions() {
   document.getElementById('msgActionsSheet').classList.remove('active');
   activeMsgActions = null;
