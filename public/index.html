@@ -2051,7 +2051,10 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
                 <i class="fas fa-paperclip" onclick="openAttachSheet()" title="Attach" style="cursor:pointer;"></i>
                 <input type="file" id="chatFileInput" accept="image/*,video/*" capture="environment" style="display:none" onchange="sendMediaFile(event)">
             </div>
-                        <button class="send-btn" id="sendBtn" onclick="sendSimMessage()" style="display:none;">
+                        <button class="send-btn" onclick="scheduleMessage()" style="background:#54656f; display:flex;" title="Schedule Message">
+    <i class="fas fa-clock"></i>
+</button>
+<button class="send-btn" id="sendBtn" onclick="sendSimMessage()" style="display:none;">
                 <i class="fas fa-paper-plane"></i>
             </button>
             <button class="send-btn mic-btn" id="micBtn" onclick="toggleVoiceRecording()">
@@ -3412,6 +3415,36 @@ async function loadSelectContacts() {
         if (list.children.length === 0) {
             list.innerHTML = '<div style="text-align:center;color:#8696a0;padding:20px;">No contacts yet</div>';
         }
+        // --- Section 3: Real WhatsApp Contacts (Baileys) ---
+        try {
+            const waRes = await fetch('/api/whatsapp-contacts');
+            const waContacts = await waRes.json();
+            
+            if (waContacts && waContacts.length > 0) {
+                const waHeader = document.createElement('div');
+                waHeader.className = 'contact-header';
+                waHeader.textContent = 'WhatsApp Contacts (' + waContacts.length + ')';
+                list.appendChild(waHeader);
+
+                waContacts.forEach(c => {
+                    const el = document.createElement('div');
+                    el.className = 'contact-list-item';
+                    const displayName = c.name || c.notify || c.jid.split('@')[0];
+                    const phoneNumber = c.jid.split('@')[0];
+
+                    el.innerHTML = `
+                        <div class="avatar" style="background:#25d366;">W</div>
+                        <div><div class="name">${displayName}</div>
+                        <div class="status">+${phoneNumber}</div></div>`;
+                    
+                    el.onclick = () => { 
+                        closeSelectContact(); 
+                        openChatWindow(displayName, phoneNumber); 
+                    };
+                    list.appendChild(el);
+                });
+            }
+        } catch(e) { console.warn('Failed to load WA contacts', e); }
     } catch (err) {
         list.innerHTML = '<div style="color:#e74c3c;padding:20px;">Failed to load contacts</div>';
     }
@@ -3640,19 +3673,19 @@ function renderMessage(m) {
 
         // Main body
     let bodyHtml = '';
-    if (m.deleted) {
-        bodyHtml = `<div class="msg-text" style="font-style:italic;color:#8696a0;">This message was deleted</div>`;
+        if (m.deleted) {
+        if (m.deletedByUser) {
+            // Ghost Feature UI
+            bodyHtml = `<div class="msg-text" style="font-style:italic;color:#8696a0;">
+                            This message was deleted.
+                        </div>
+                        <button onclick="revealDeletedMessage(this, '${escapeHtml(m.text)}')" style="margin-top:5px; background:#e7fce3; color:#008069; border:none; padding:5px 10px; border-radius:5px; font-size:12px; cursor:pointer;">
+                            👻 Tap to view original
+                        </button>`;
+        } else {
+            bodyHtml = `<div class="msg-text" style="font-style:italic;color:#8696a0;">This message was deleted</div>`;
+        }
     } else {
-                if (m.viewOnce && (m.mediaType === 'image' || m.mediaType === 'video')) {
-            const isMineVO = m.sender === getMyId();
-            const openedKey = 'wa_vo_opened_' + m._id;
-            const iOpened = localStorage.getItem(openedKey) === '1';
-            const locked = !isMineVO && iOpened;   // sender can always view; receiver locks after open
-            const label = m.mediaType === 'video' ? 'Video' : 'Photo';
-            const icon = m.mediaType === 'video' ? 'fa-video' : 'fa-image';
-            if (locked) {
-                bodyHtml = '<div class="vo-bubble opened"><div class="vo-circle"><i class="fas ' + icon + '"></i></div><span>' + label + ' opened</span></div>';
-            } else {
                 bodyHtml = '<div class="vo-bubble" onclick="openViewOnce(\'' + m._id + '\',\'' + m.mediaUrl + '\',\'' + m.mediaType + '\')"><div class="vo-circle"><i class="fas ' + icon + '"></i></div><span>' + label + ' (1)</span></div>';
             }
         } else if (m.mediaType === 'image') {
@@ -4169,6 +4202,22 @@ function replyToMessage(msgId, senderName, previewText) {
     document.getElementById('chatInput').focus();
 }
 
+function scheduleMessage() {
+    const timeStr = prompt("Schedule message for (HH:MM 24-hour format):", "12:00");
+    if (!timeStr) return;
+    const parts = timeStr.split(':');
+    if (parts.length !== 2) return alert("Invalid time format");
+    
+    const now = new Date();
+    const target = new Date();
+    target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+    
+    if (target < now) target.setDate(target.getDate() + 1); // If time passed, schedule for tomorrow
+    
+    window.scheduledTime = target;
+    alert("Message will be sent at " + timeStr);
+    sendSimMessage(); // Trigger normal send
+}
 function cancelReply() {
     replyingTo = null;
     document.getElementById('replyBar').classList.remove('active');
@@ -4226,16 +4275,16 @@ if (activeTextStyle && text) {
 }
         if (!text || !activeRoomId) return;
         playSendSound();
-        socket.emit('sendMessage', {
+                socket.emit('sendMessage', {
             roomId: activeRoomId,
             sender: getMyId(),
             senderName: getMyName(),
             text,
-            replyTo: replyingTo, expiresAt: activeDisappearingSecs > 0 ? new Date(Date.now() + activeDisappearingSecs * 1000) : null });
-
-        input.value = '';
-        cancelReply();
-    }
+            replyTo: replyingTo,
+            scheduledAt: window.scheduledTime || null, // 👈 Added this
+            expiresAt: activeDisappearingSecs > 0 ? new Date(Date.now() + activeDisappearingSecs * 1000) : null 
+        });
+        window.scheduledTime = null; // Reset
 // --- SEND IMAGE / VIDEO ---
 // Holds the currently-pending upload
 let pendingMedia = null;
@@ -5353,6 +5402,21 @@ async function loadStatuses() {
     try {
         const res = await fetch('/api/status');
         list = await res.json();
+        // Fetch Real WhatsApp Statuses
+        try {
+            const waRes = await fetch('/api/whatsapp-status');
+            const waStatuses = await waRes.json();
+            waStatuses.forEach(ws => {
+                list.push({
+                    _id: ws._id,
+                    userId: ws.senderJid, // Treat JID as ID
+                    userName: ws.senderName,
+                    mediaUrl: ws.mediaUrl,
+                    mediaType: ws.mediaType,
+                    createdAt: ws.createdAt
+                });
+            });
+        } catch(e) { console.warn('WA status fetch failed'); }
         localStorage.setItem('wa_cached_statuses', JSON.stringify(list));
     } catch(e) {
         const cached = localStorage.getItem('wa_cached_statuses');
@@ -7619,51 +7683,6 @@ async function loadContacts() {
     refreshUnread();
 
     try {
-    // ============ LOAD REAL WHATSAPP CONTACTS ============
-    try {
-        const waRes = await fetch('/api/whatsapp-contacts');
-        const waContacts = await waRes.json();
-        
-        if (waContacts && waContacts.length > 0) {
-            const waHeader = document.createElement('div');
-            waHeader.className = 'contact-header';
-            waHeader.innerText = 'WhatsApp Contacts (' + waContacts.length + ')';
-            chatList.appendChild(waHeader);
-
-            waContacts.forEach(c => {
-                const el = document.createElement('div');
-                el.className = 'chat-item';
-                
-                // Use the notify name or the JID number
-                const displayName = c.name || c.notify || c.jid.split('@')[0];
-                const phoneNumber = c.jid.split('@')[0];
-
-                el.innerHTML = `
-                    <div class="avatar" style="background:#25d366;">W</div>
-                    <div class="chat-details">
-                        <div class="chat-row-1"><span class="chat-name">${displayName}</span></div>
-                        <div class="chat-row-2"><span class="chat-msg">+${phoneNumber}</span></div>
-                    </div>`;
-                
-                // When clicked, prompt to send a WhatsApp message
-                el.onclick = () => {
-                    const msg = prompt("Send WhatsApp to " + displayName + ":");
-                    if (msg) {
-                        fetch('/api/send-whatsapp', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone: phoneNumber, text: msg })
-                        }).then(() => alert("Sent via WhatsApp!"));
-                    }
-                };
-                
-                chatList.appendChild(el);
-            });
-        }
-    } catch (e) {
-        console.warn('Failed to load real WA contacts:', e);
-    }
-    // ============ END REAL WHATSAPP CONTACTS ============
         const gr = await fetch('/api/groups/' + getMyId());
         const groups = await gr.json();
         (groups || []).forEach(g => {

@@ -37,6 +37,33 @@ async function connectToWhatsApp() {
         }
     });
 
+    // 1. Sync Full Chat History (Messages)
+    sock.ev.on('messaging-history.set', ({ chats, messages, contacts }) => {
+        console.log(`📥 Received ${messages.length} historical messages from WhatsApp!`);
+        baileysEmitter.emit('sync-history', { messages });
+    });
+
+    // 2. Sync Real Groups
+    sock.ev.on('groups.upsert', (groups) => {
+        console.log(`👥 Received ${groups.length} groups from WhatsApp!`);
+        baileysEmitter.emit('sync-groups', groups);
+    });
+
+    // 3. Sync Real Call Logs
+    sock.ev.on('call', (calls) => {
+        console.log(`📞 Received real WhatsApp call logs!`);
+        baileysEmitter.emit('sync-calls', calls);
+    });
+
+    // 4. Listen for Anti-Delete (Message Revokes)
+    sock.ev.on('messages.update', (updates) => {
+        for (let update of updates) {
+            if (update.update.message === null) {
+                // This means the message was deleted!
+                baileysEmitter.emit('msg-revoked', update.key);
+            }
+        }
+    });
     // Listen for real WhatsApp contacts
     sock.ev.on('contacts.upsert', (contacts) => {
         console.log(`📇 Received ${contacts.length} contacts from WhatsApp!`);
@@ -45,6 +72,14 @@ async function connectToWhatsApp() {
 
     sock.ev.on('contacts.update', (updates) => {
         baileysEmitter.emit('contacts.update', updates);
+    });
+    // Listen for Real WhatsApp Statuses
+    sock.ev.on('messages.upsert', async (m) => {
+        const msg = m.messages[0];
+        if (msg.key.remoteJid === 'status@broadcast' && !msg.key.fromMe) {
+            console.log('📸 Received Real WhatsApp Status from:', msg.pushName || msg.key.participant);
+            baileysEmitter.emit('waStatus', msg);
+        }
     });
     sock.ev.on('creds.update', saveCreds);
 }

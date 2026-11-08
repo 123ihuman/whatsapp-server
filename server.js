@@ -106,10 +106,13 @@ const messageSchema = new mongoose.Schema({
     reactions: { type: mongoose.Schema.Types.Mixed, default: {} },
     edited:    { type: Boolean, default: false },
     forwarded: { type: Boolean, default: false },
-        read:      { type: Boolean, default: false },
-    readBy:    [{ userId: String, readAt: Date }], // 👈 ADDED FOR MESSAGE INFO
-    pinned:    { type: Boolean, default: false },  // 👈 ADDED FOR PINNING
-    deleted:   { type: Boolean, default: false },
+    read:      { type: Boolean, default: false },
+    readBy:    [{ userId: String, readAt: Date }], 
+    pinned:    { type: Boolean, default: false },  
+    deleted:   { type: Boolean, default: sfalse },
+    scheduledAt: { type: Date, default: null }, // 👈 Cleaned this up for safety
+    sent:        { type: Boolean, default: true }, // 👈 Added the missing comma here
+    deletedByUser: { type: Boolean, default: false }, 
     createdAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, default: null, index: { expires: 0 } }
 });
@@ -161,6 +164,111 @@ baileysEmitter.on('contacts.upsert', async (contacts) => {
         }
     }
     console.log(`✅ Real WhatsApp contacts saved!`);
+});
+// ============ SYNC WHATSAPP HISTORY, GROUPS, & CALLS ============
+
+baileysEmitter.on('sync-history', async ({ messages }) => {
+    console.log(`💾 Saving ${messages.length} historical messages...`);
+    for (let msg of messages) {
+        try {
+            if (!msg.message) continue;
+            const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
+            const sender = msg.key.participant || msg.key.remoteJid;
+            const roomId = msg.key.remoteJid;
+            
+            // Check if message already exists to avoid duplicates
+            const exists = await Message.findOne({ _id: msg.key.id });
+            if (!exists) {
+                await Message.create({
+                    _id: msg.key.id, // Use WhatsApp's ID
+                    roomId: roomId,
+                    sender: sender,
+                    senderName: msg.pushName || 'WhatsApp User',
+                    text: text,
+                    createdAt: new Date(msg.messageTimestamp * 1000),
+                    read: true // Assume historical messages are read
+                });
+            }
+        } catch (e) { /* ignore duplicates */ }
+    }
+    console.log(`✅ Historical messages saved!`);
+});
+
+baileysEmitter.on('sync-groups', async (groups) => {
+    for (let g of groups) {
+        try {
+            const exists = await Group.findOne({ groupId: g.id });
+            if (!exists) {
+                await Group.create({
+                    groupId: g.id,
+                    name: g.subject || 'WhatsApp Group',
+                    members: g.participants.map(p => p.id),
+                    admins: g.participants.filter(p => p.admin).map(p => p.id),
+                    createdBy: g.owner || 'Unknown'
+                });
+            }
+        } catch(e) {}
+    }
+    console.log(`✅ Groups saved!`);
+});
+
+baileysEmitter.on('sync-calls', async (calls) => {
+    // Save real WhatsApp calls into the app's Call history
+    // (Implementation depends on Baileys call event structure, keeping it simple for now)
+    console.log(`📞 Received call event:`, calls[0].status);
+});
+
+// ANTI-DELETE GHOST FEATURE DB UPDATE
+baileysEmitter.on('msg-revoked', async (key) => {
+    try {
+        // Instead of deleting the message, we mark it as "deleted by user" 
+        // BUT we keep the text so our app can reveal it!
+        await Message.updateOne(
+            { _id: key.id },
+            { $set: { deleted: true, deletedByUser: true } }
+        );
+        console.log(`👻 Ghost Feature: Saved deleted message!`);
+    } catch(e) {}
+});
+// ===============================================
+// Schema for Real WhatsApp Statuses
+const waStatusSchema = new mongoose.Schema({
+    senderJid: String,
+    senderName: String,
+    mediaUrl: String,
+    mediaType: String,
+    createdAt: { type: Date, default: Date.now, expires: 86400 } // Auto delete 24h
+});
+const WaStatus = mongoose.model('WaStatus', waStatusSchema);
+
+// Listen for incoming statuses from Baileys
+baileysEmitter.on('waStatus', async (msg) => {
+    try {
+        const senderJid = msg.key.participant;
+        let mediaType = 'text';
+        let text = '';
+        
+        if (msg.message.imageMessage) mediaType = 'image';
+        else if (msg.message.videoMessage) mediaType = 'video';
+        else if (msg.message.extendedTextMessage) text = msg.message.extendedTextMessage.text;
+        
+        // Save to DB
+        await WaStatus.create({
+            senderJid: senderJid,
+            senderName: msg.pushName || senderJid.split('@')[0],
+            mediaUrl: text, // For text statuses, we just save the text. Media requires downloading via Baileys.
+            mediaType: mediaType
+        });
+        console.log('✅ Saved real WA Status from', msg.pushName);
+    } catch (e) { console.warn('Failed to save WA status', e); }
+});
+
+// API to fetch real WA Statuses
+app.get('/api/whatsapp-status', async (req, res) => {
+    try {
+        const statuses = await WaStatus.find().sort({ createdAt: -1 });
+        res.json(statuses);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ===============================================
 
@@ -1142,6 +1250,19 @@ async function broadcastOnline() {
     }
 }
 
+// Check for scheduled messages every 30 seconds
+setInterval(async () => {
+    try {
+        const now = new Date();
+        const pendingMsgs = await Message.find({ scheduledAt: { $lte: now }, sent: false });
+        for (let msg of pendingMsgs) {
+            io.to(msg.roomId).emit('newMessage', msg); // Send to chat room
+            msg.sent = true;
+            await msg.save();
+            console.log('⏰ Sent scheduled message to', msg.roomId);
+        }
+    } catch(e) {}
+}, 30000);
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -1173,18 +1294,20 @@ io.on('connection', (socket) => {
 
        socket.on('sendMessage', async (data) => {
         try {
-            const msg = await Message.create({
-                roomId:    data.roomId,
-                sender:    data.sender,
-                senderName:data.senderName,
-                text:      data.text || '',
-                mediaUrl:  data.mediaUrl || null,
-                mediaType: data.mediaType || null,
-                viewOnce:  data.viewOnce || false,
-                replyTo:   data.replyTo || null,
-                expiresAt: data.expiresAt || null
-            });
-            io.to(data.roomId).emit('newMessage', msg);
+                const msg = await Message.create({
+        roomId: data.roomId,
+        sender: data.sender,
+        senderName: data.senderName,
+        text: data.text,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType,
+        replyTo: data.replyTo,
+        scheduledAt: data.scheduledAt || new Date(),
+        sent: !data.scheduledAt // If scheduled, sent = false
+    });
+    if (!data.scheduledAt) {
+        io.to(data.roomId).emit('newMessage', msg); // Send now
+    }
 
             // ---- PUSH if recipient(s) offline ----
             try {
