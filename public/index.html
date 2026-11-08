@@ -4412,7 +4412,7 @@ function handleGoogleLogin(response) {
 }
 
 function openMobileGoogleLogin() {
-    const clientId = '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com';
+    const clientId = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
     const redirectUri = 'https://whatsapp-server-e668.onrender.com/oauth'; // 👈 EXACT MATCH
     const scope = 'email profile';
     
@@ -4427,7 +4427,7 @@ function openMobileGoogleLogin() {
 // Existing code below
 window.addEventListener('load', () => {
   if (typeof google !== 'undefined') {
-    google.accounts.id.initialize({ client_id: '399508571725-37m1i32papskp8rf4f9g1m8jm5s2gk7u.apps.googleusercontent.com', callback: handleGoogleLogin });
+    google.accounts.id.initialize({ client_id: '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com', callback: handleGoogleLogin });
   }
 });
 /* ================= FORGOT PASSWORD (OTP) ================= */
@@ -4784,7 +4784,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const bar = document.querySelector('#wa_web_initial_startup progress');
     const splash = document.getElementById('wa_web_initial_startup');
 
-    // Animate progress bar like WhatsApp Web boot
+    function reveal() {
+        if (splash) {
+            splash.classList.add('hide');
+            setTimeout(() => splash.remove(), 500);
+        }
+    }
+
     let value = 0;
     const timer = setInterval(() => {
         const remaining = 100 - value;
@@ -4793,38 +4799,37 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bar) bar.value = value;
     }, 60);
 
-    // Hide splash after minimum 1.6s
-    function reveal() {
-        if (splash) {
-            splash.classList.add('hide');
-            setTimeout(() => splash.remove(), 500);
-        }
-    }
-
     const t = localStorage.getItem('wa_token');
     const u = localStorage.getItem('wa_user');
 
-                   setTimeout(() => {
-            try {
-                if (t && u && u !== 'undefined') {
-                    authToken = t;
-                    currentUser = JSON.parse(u);
-                    afterLogin();
-                } else {
-                    document.getElementById('authScreen').style.display = 'flex';
-                    document.querySelector('.app-container').style.display = 'none'; // 👈 ADDED HERE
-                }
-            } catch (err) {
-                console.error("Startup crash prevented:", err);
+    setTimeout(() => {
+        try {
+            if (t && u && u !== 'undefined') {
+                authToken = t;
+                currentUser = JSON.parse(u);
+                afterLogin();
+            } else {
+                // Show Login Screen
                 document.getElementById('authScreen').style.display = 'flex';
-                document.querySelector('.app-container').style.display = 'none'; // 👈 ADDED HERE TOO
-                localStorage.removeItem('wa_token');
-                localStorage.removeItem('wa_user');
-            } finally {
-                reveal(); // This ALWAYS runs, no matter what
+                document.querySelector('.app-container').style.display = 'none';
             }
-        }, 1700);
-})(); // 👈 THIS CLOSES THE SPLASH SCREEN FUNCTION
+        } catch (err) {
+            console.error("Startup crash prevented:", err);
+            document.getElementById('authScreen').style.display = 'flex';
+            document.querySelector('.app-container').style.display = 'none';
+            localStorage.removeItem('wa_token');
+            localStorage.removeItem('wa_user');
+        } finally {
+            reveal();
+            // FAILSAFE: If both screens are hidden, force the login screen
+            if (document.getElementById('authScreen').style.display === 'none' && 
+                document.querySelector('.app-container').style.display === 'none') {
+                document.getElementById('authScreen').style.display = 'flex';
+                document.body.style.background = '#d1d7db'; // Kill the black screen
+            }
+        }
+    }, 1700);
+})();
 // --- WEBRTC SETUP ---
 // --- WEBRTC SETUP ---
 const rtcConfig = {
@@ -7404,23 +7409,18 @@ document.addEventListener('click', function(e){
   // attach sheet is already handling clicks via onclick
 });
 /* ==== END PATCH ==== */
-
-// 👇 DEEP LINK LISTENER FOR GOOGLE LOGIN 👇
 // 👇 DEEP LINK LISTENER FOR GOOGLE LOGIN 👇
 if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
     window.Capacitor.Plugins.App.addListener('appUrlOpen', (event) => {
-        // Catch the custom scheme bounce from the server
         if (event.url.includes('id_token')) {
             const hash = event.url.split('#')[1];
             const params = new URLSearchParams(hash);
             const idToken = params.get('id_token'); 
             
-            // Close Chrome on the phone
             if (window.Capacitor.Plugins.Browser) {
                 window.Capacitor.Plugins.Browser.close();
             }
             
-            // Log them in
             if (idToken) { 
                 handleGoogleLogin({ credential: idToken }); 
             }
