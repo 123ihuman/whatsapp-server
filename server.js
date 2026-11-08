@@ -742,6 +742,15 @@ app.get('/api/whatsapp-status', (req, res) => {
     res.json({ ready: isWhatsAppReady() });
 });
 
+// Fetch Real WhatsApp Contacts
+app.get('/api/whatsapp-contacts', async (req, res) => {
+    try {
+        const contacts = await WaContact.find().sort({ name: 1 });
+        res.json(contacts);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 app.get('/api/users', async (req, res) => {
     try {
         const list = await User.find({}, { password: 0 }).sort({ name: 1 }).lean();

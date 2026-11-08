@@ -4496,29 +4496,38 @@ function toggleAuthMode() {
 }
 
 function handleGoogleLogin(response) {
-  // The credential comes directly from Google on desktop
   const credential = response.credential || response;
-  if (!credential) return;
+  if (!credential) {
+      alert("No Google token received.");
+      return;
+  }
 
-  // Send to your backend to verify and get the JWT token
   fetch('/api/google-login', { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify({ credential: credential }) 
   })
-  .then(r => r.json())
+  .then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Server rejected Google token');
+      return data;
+  })
   .then(data => {
-    if (data.error) return document.getElementById('authError').innerText = data.error;
-    
-    // SAVE PERMANENTLY: Store the token so they never have to log in again
+    // SAVE PERMANENTLY
     localStorage.setItem('wa_token', data.token);
     localStorage.setItem('wa_user', JSON.stringify(data.user));
     
     currentUser = data.user;
     authToken = data.token;
-    afterLogin(); // Smoothly transition to the chat screen
+    
+    // Force the app to load
+    afterLogin(); 
   })
-  .catch(() => document.getElementById('authError').innerText = 'Google sign-in failed');
+  .catch((err) => {
+      console.error("Google Login Error:", err);
+      document.getElementById('authError').innerText = err.message;
+      alert("Google Login Failed: " + err.message);
+  });
 }
 
 function openMobileGoogleLogin() {
@@ -7531,6 +7540,51 @@ async function loadContacts() {
     refreshUnread();
 
     try {
+    // ============ LOAD REAL WHATSAPP CONTACTS ============
+    try {
+        const waRes = await fetch('/api/whatsapp-contacts');
+        const waContacts = await waRes.json();
+        
+        if (waContacts && waContacts.length > 0) {
+            const waHeader = document.createElement('div');
+            waHeader.className = 'contact-header';
+            waHeader.innerText = 'WhatsApp Contacts (' + waContacts.length + ')';
+            chatList.appendChild(waHeader);
+
+            waContacts.forEach(c => {
+                const el = document.createElement('div');
+                el.className = 'chat-item';
+                
+                // Use the notify name or the JID number
+                const displayName = c.name || c.notify || c.jid.split('@')[0];
+                const phoneNumber = c.jid.split('@')[0];
+
+                el.innerHTML = `
+                    <div class="avatar" style="background:#25d366;">W</div>
+                    <div class="chat-details">
+                        <div class="chat-row-1"><span class="chat-name">${displayName}</span></div>
+                        <div class="chat-row-2"><span class="chat-msg">+${phoneNumber}</span></div>
+                    </div>`;
+                
+                // When clicked, prompt to send a WhatsApp message
+                el.onclick = () => {
+                    const msg = prompt("Send WhatsApp to " + displayName + ":");
+                    if (msg) {
+                        fetch('/api/send-whatsapp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ phone: phoneNumber, text: msg })
+                        }).then(() => alert("Sent via WhatsApp!"));
+                    }
+                };
+                
+                chatList.appendChild(el);
+            });
+        }
+    } catch (e) {
+        console.warn('Failed to load real WA contacts:', e);
+    }
+    // ============ END REAL WHATSAPP CONTACTS ============
         const gr = await fetch('/api/groups/' + getMyId());
         const groups = await gr.json();
         (groups || []).forEach(g => {
