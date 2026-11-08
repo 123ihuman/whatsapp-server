@@ -4723,21 +4723,26 @@ async function doAuth() {
 
 function afterLogin() {
     console.log("1. Starting Login...");
+    
+    // Hide Login Screen
     document.getElementById('authScreen').style.display = 'none';
     
-    // Force the app container to show
+    // FORCE show the app container with !important
     const appContainer = document.querySelector('.app-container');
-    if (appContainer) appContainer.style.display = 'block';
+    if (appContainer) {
+        appContainer.style.setProperty('display', 'block', 'important');
+        appContainer.style.setProperty('background', '#ffffff', 'important');
+    }
     
     // Reset background
     document.body.classList.remove('dark-mode');
-    document.body.style.background = '#d1d7db';
+    document.body.style.setProperty('background', '#d1d7db', 'important');
 
-    // Show a loading message in the chat list
+    // Show a loading message
     const chatList = document.getElementById('chatList');
     if (chatList) chatList.innerHTML = '<div style="text-align:center; padding:20px; color:#667781;">Loading chats... Please wait.</div>';
 
-    // Load data with a strict timeout so it NEVER freezes the UI
+    // Load data
     setTimeout(async () => {
         console.log("2. Fetching Contacts...");
         try {
@@ -4749,13 +4754,14 @@ function afterLogin() {
         }
     }, 100);
 
-    // Optional background tasks
+    // Safe background tasks
     try { loadStatuses(); } catch(e) {}
     try { requestNotificationPermission(); } catch(e) {}
 
     if (socket.connected && currentUser) {
         socket.emit('userOnline', currentUser.id);
     }
+}
 
     // Register push notifications (Moved safely INSIDE the function)
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
