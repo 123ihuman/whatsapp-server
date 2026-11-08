@@ -2245,11 +2245,12 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
                     <div class="toggle on"><i class="fas fa-check"></i></div>
                 </div>
             </div>
-            <div class="settings-section-title">Disappearing messages</div>
+                                   <div class="settings-section-title">Disappearing messages</div>
             <div class="settings-list">
-                <div class="settings-row">
+                <!-- Corrected Single Row -->
+                <div class="settings-row" onclick="openDefaultTimerPicker()">
                     <div class="settings-row-text">Default message timer<br><span class="settings-sub">Start new chats with disappearing messages set to your timer</span></div>
-                    <div class="settings-row-right">Off</div>
+                    <div class="settings-row-right" id="defaultTimerLabel" style="color:#00a884; font-weight:600;">Off</div>
                 </div>
             </div>
             <div class="settings-section-title">Groups</div>
@@ -3484,6 +3485,16 @@ async function openChatWindow(name, userId) {
     // Groups: room ID is the group ID itself. 1-on-1: sorted pair.
     activeRoomId = String(userId).startsWith('group_') ? userId : makeRoomId(getMyId(), userId);
     await loadPrefs();
+        // Apply default timer if this chat doesn't have one
+    if (prefs.defaultTimer && activeDisappearingSecs === 0) {
+        activeDisappearingSecs = prefs.defaultTimer;
+        updateDisappearingBadge();
+        fetch('/api/messages/setDisappearing', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ roomId: makeRoomId(getMyId(), userId), seconds: activeDisappearingSecs }) 
+        }).catch(()=>{});
+    }
     if ((prefs.blocked || []).includes(userId)) {
         setTimeout(() => alert(activeChatName + ' is blocked. Unblock from the ⋮ menu to continue.'), 100);
     }
@@ -6383,6 +6394,7 @@ async function loadPrefs() {
     prefs.starredMsgs = localStarredMsgs;
     if (!prefs.privacy) prefs.privacy = {};
     applyPrivacyLabels();
+    if (prefs.defaultTimer) updateDefaultTimerLabel(prefs.defaultTimer);
   } catch(e) {}
 }
 async function savePrefs(field, value) {
@@ -6604,6 +6616,30 @@ function changeGroupIcon() {
 async function openAddMemberPicker() {
     if (!activeGroupId) return;
     openAddMemberScreen();
+}
+function openDefaultTimerPicker() {
+    const current = prefs.defaultTimer || 0;
+    const options = "0 - Off\n86400 - 24 hours\n604800 - 7 days\n7776000 - 90 days";
+    const pick = prompt("Select default timer (Enter number):\n\n" + options, current);
+    
+    if (pick !== null) {
+        const secs = parseInt(pick);
+        if ([0, 86400, 604800, 7776000].includes(secs)) {
+            savePrefs('defaultTimer', secs);
+            updateDefaultTimerLabel(secs);
+        } else {
+            alert('Invalid option. Please type 0, 86400, 604800, or 7776000.');
+        }
+    }
+}
+
+function updateDefaultTimerLabel(secs) {
+    const el = document.getElementById('defaultTimerLabel');
+    if (!el) return;
+    if (secs === 86400) el.innerText = '24 hours';
+    else if (secs === 604800) el.innerText = '7 days';
+    else if (secs === 7776000) el.innerText = '90 days';
+    else el.innerText = 'Off';
 }
 function openDisappearingPicker() { document.getElementById('disappearingPicker').classList.add('active'); }
 function closeDisappearingPicker() { document.getElementById('disappearingPicker').classList.remove('active'); }

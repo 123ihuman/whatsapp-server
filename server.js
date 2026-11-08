@@ -115,12 +115,14 @@ const messageSchema = new mongoose.Schema({
 const Message = mongoose.model('Message', messageSchema);
 
 const userPrefsSchema = new mongoose.Schema({
-    userId:  { type: String, required: true, unique: true },
-    pinned:  { type: [String], default: [] },
-    archived:{ type: [String], default: [] },
-    starred: { type: [String], default: [] },
-    blocked: { type: [String], default: [] },
-    privacy: { type: mongoose.Schema.Types.Mixed, default: {} }
+    userId: String,
+    pinned: [String],
+    archived: [String],
+    starred: [String],
+    blocked: [String],
+    starredMsgs: [String],
+    privacy: { type: mongoose.Schema.Types.Mixed, default: {} },
+    defaultTimer: { type: Number, default: 0 } // 👈 ADD THIS LINE
 });
 const UserPrefs = mongoose.model('UserPrefs', userPrefsSchema);
 
