@@ -4722,25 +4722,22 @@ async function doAuth() {
 }
 
 function afterLogin() {
-    // Hide login screen
+    // 1. Hide Login Screen
     document.getElementById('authScreen').style.display = 'none';
     
-    // Show main app
+    // 2. FORCE show the app container
     const appContainer = document.querySelector('.app-container');
     appContainer.style.display = 'block';
-    
-    // Force the body background to match the app (prevents black screen)
+
+    // 3. FORCE standard background color to prevent pitch black
+    document.body.classList.remove('dark-mode');
     document.body.style.background = '#d1d7db';
 
-    // Load data safely
+    // 4. Safely load data (wrapped in try/catch so it NEVER freezes the UI)
     setTimeout(() => {
-        try {
-            loadContacts();
-            loadStatuses();
-        } catch(e) {
-            console.warn("Data load warning:", e);
-        }
-    }, 100);
+        try { loadContacts(); } catch(e) { console.error("Contacts error:", e); }
+        try { loadStatuses(); } catch(e) { console.error("Status error:", e); }
+    }, 50);
 
     console.log('✅ Logged in as', currentUser.name);
     if (socket.connected) socket.emit('userOnline', currentUser.id);
