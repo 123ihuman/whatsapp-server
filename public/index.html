@@ -3684,9 +3684,9 @@ function renderMessage(m) {
         </div>`;
     }
 
-        // Main body
+            // Main body
     let bodyHtml = '';
-        if (m.deleted) {
+    if (m.deleted) {
         if (m.deletedByUser) {
             // Ghost Feature UI
             bodyHtml = `<div class="msg-text" style="font-style:italic;color:#8696a0;">
@@ -3699,6 +3699,17 @@ function renderMessage(m) {
             bodyHtml = `<div class="msg-text" style="font-style:italic;color:#8696a0;">This message was deleted</div>`;
         }
     } else {
+        // Main media rendering logic
+        if (m.viewOnce && (m.mediaType === 'image' || m.mediaType === 'video')) {
+            const isMineVO = m.sender === getMyId();
+            const openedKey = 'wa_vo_opened_' + m._id;
+            const iOpened = localStorage.getItem(openedKey) === '1';
+            const locked = !isMineVO && iOpened;
+            const label = m.mediaType === 'video' ? 'Video' : 'Photo';
+            const icon = m.mediaType === 'video' ? 'fa-video' : 'fa-image';
+            if (locked) {
+                bodyHtml = '<div class="vo-bubble opened"><div class="vo-circle"><i class="fas ' + icon + '"></i></div><span>' + label + ' opened</span></div>';
+            } else {
                 bodyHtml = '<div class="vo-bubble" onclick="openViewOnce(\'' + m._id + '\',\'' + m.mediaUrl + '\',\'' + m.mediaType + '\')"><div class="vo-circle"><i class="fas ' + icon + '"></i></div><span>' + label + ' (1)</span></div>';
             }
         } else if (m.mediaType === 'image') {
@@ -3708,6 +3719,7 @@ function renderMessage(m) {
         } else if (m.mediaType === 'audio') {
             bodyHtml = `<audio src="${m.mediaUrl}" controls style="width:220px;margin-bottom:4px;"></audio>`;
         }
+        
         if (m.mediaType === 'location') {
           const parts = (m.mediaUrl || '').split(',');
           const lat = parts[0], lng = parts[1];
@@ -3730,7 +3742,8 @@ function renderMessage(m) {
             (isMine && stillLive ? '<div class="stop-sharing" onclick="stopLiveLocation(\'' + m._id + '\')">Stop sharing</div>' : '') +
             '</div>';
         }
-            if (m.text) bodyHtml += `<div class="msg-text">${m.text}</div>`;
+        
+        if (m.text) bodyHtml += `<div class="msg-text">${m.text}</div>`;
     }
 
     const div = document.createElement('div');
