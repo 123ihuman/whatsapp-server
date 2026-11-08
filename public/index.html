@@ -3533,8 +3533,8 @@ async function openChatWindow(name, userId) {
     const jumpBtn = document.getElementById('jumpBottomBtn');
     if (jumpBtn) jumpBtn.classList.remove('show');
 
-    // Load messages FIRST
-    const area = document.getElementById('messagesArea');
+        // Load messages FIRST
+    area = document.getElementById('messagesArea'); // 👈 Removed 'const' here
     area.innerHTML = '<div style="text-align:center;color:#8696a0;font-size:13px;padding:10px;">Loading…</div>';
     try {
         const res = await fetch('/api/messages/' + activeRoomId);
