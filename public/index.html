@@ -4545,7 +4545,6 @@ function handleGoogleLogin(response) {
 }
 
 // ============ FIREBASE PHONE LOGIN ============
-// 👇 PASTE YOUR FIREBASE CONFIG HERE 👇
 const firebaseConfig = {
   apiKey: "AIzaSyDvNlyukv881auDMcRE4ynJVM4kYpQQdrA",
   authDomain: "whatsapp-pro-clone.firebaseapp.com",
@@ -4555,7 +4554,6 @@ const firebaseConfig = {
   appId: "1:1055260871265:web:0197e495097cdc626db820"
 };
 
-// Initialize Firebase (Only if not already initialized)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -4565,20 +4563,15 @@ let confirmationResult = null;
 function sendPhoneOTP() {
     let phone = document.getElementById('authPhone').value.trim();
     
-    // 1. Enforce exactly 10 digits
     if (phone.length !== 10) {
         return alert("Please enter exactly a 10-digit mobile number.");
     }
-    
-    // 2. Automatically prepend +91 for India
     phone = "+91" + phone;
     
-    // Show loading
     const btn = event.target;
     btn.innerText = "Sending...";
     btn.disabled = true;
 
-    // Setup invisible reCAPTCHA
     window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('authBtn', {
         'size': 'invisible',
         'callback': function(response) {}
@@ -4594,8 +4587,8 @@ function sendPhoneOTP() {
             alert("Error: " + error.message);
             btn.innerText = "Send OTP";
             btn.disabled = false;
-        }); // 👈 THIS WAS MISSING
-} // 👈 THIS WAS MISSING
+        });
+} // 👈 Closing brace for sendPhoneOTP
 
 function verifyPhoneOTP() {
     const otp = document.getElementById('authOtp').value.trim();
@@ -4616,7 +4609,6 @@ function verifyPhoneOTP() {
         .then(r => r.json())
         .then(data => {
             if (data.error) throw new Error(data.error);
-            
             localStorage.setItem('wa_token', data.token);
             localStorage.setItem('wa_user', JSON.stringify(data.user));
             currentUser = data.user;
@@ -4631,8 +4623,8 @@ function verifyPhoneOTP() {
         alert("Invalid OTP: " + error.message);
         btn.innerText = "Verify OTP & Login";
         btn.disabled = false;
-    }); // 👈 THIS WAS MISSING
-} // 👈 THIS WAS MISSING
+    });
+} // 👈 Closing brace for verifyPhoneOTP
 // ============ END FIREBASE PHONE LOGIN ============
 function openMobileGoogleLogin() {
     const clientId = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
@@ -7816,9 +7808,9 @@ function attachContact() {
 document.addEventListener('click', function(e){
   const item = e.target.closest('.attach-item');
   if (!item) return;
-  // attach sheet is already handling clicks via onclick
 });
 /* ==== END PATCH ==== */
+
 // 👇 DEEP LINK LISTENER FOR GOOGLE LOGIN 👇
 if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
     window.Capacitor.Plugins.App.addListener('appUrlOpen', (event) => {
