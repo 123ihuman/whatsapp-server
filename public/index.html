@@ -3476,9 +3476,11 @@ async function openChatWindow(name, userId) {
             title: 'Locked chat',
             sub: 'Enter PIN for ' + name,
             chatRoomId: roomIdToCheck,
-            onSuccess: () => openChatWindow(name, userId)
+                      onSuccess: () => openChatWindow(name, userId)
         });
         return;
+    } // 👈 ADD THIS CLOSING BRACE
+
     // Load specific chat theme
     const specificTheme = localStorage.getItem('wa_chat_theme_' + activeRoomId);
     const area = document.getElementById('messagesArea');
@@ -3489,7 +3491,6 @@ async function openChatWindow(name, userId) {
     } else {
         // Fallback to global theme
         loadChatTheme();
-    }
     }
 
     playClickSound();
@@ -4588,7 +4589,7 @@ function sendPhoneOTP() {
             btn.innerText = "Send OTP";
             btn.disabled = false;
         });
-} // 👈 Closing brace for sendPhoneOTP
+}
 
 function verifyPhoneOTP() {
     const otp = document.getElementById('authOtp').value.trim();
@@ -4624,7 +4625,7 @@ function verifyPhoneOTP() {
         btn.innerText = "Verify OTP & Login";
         btn.disabled = false;
     });
-} // 👈 Closing brace for verifyPhoneOTP
+}
 // ============ END FIREBASE PHONE LOGIN ============
 function openMobileGoogleLogin() {
     const clientId = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
@@ -5063,8 +5064,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.style.background = '#d1d7db';
             }
         }
-    }, 1700);
-// --- WEBRTC SETUP ---
+       }, 1700);
+})(); // 👈 THIS CLOSES THE SPLASH SCREEN FUNCTION
 // --- WEBRTC SETUP ---
 const rtcConfig = {
     iceServers: [
@@ -7826,7 +7827,7 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
             if (idToken) { 
                 handleGoogleLogin({ credential: idToken }); 
             }
-        }
+        } // 👈 THIS IS THE MISSING BRACE
     });
 }
 // 👆 END OF DEEP LINK LISTENER 👆
