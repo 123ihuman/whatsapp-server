@@ -4318,6 +4318,7 @@ if (activeTextStyle && text) {
             expiresAt: activeDisappearingSecs > 0 ? new Date(Date.now() + activeDisappearingSecs * 1000) : null 
         });
         window.scheduledTime = null; // Reset
+} // 👈 ADD THIS CLOSING BRACE
 // --- SEND IMAGE / VIDEO ---
 // Holds the currently-pending upload
 let pendingMedia = null;
