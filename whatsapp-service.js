@@ -1,6 +1,8 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
+const EventEmitter = require('events');
+const baileysEmitter = new EventEmitter();
 
 let sock = null;
 let isReady = false;
@@ -35,6 +37,15 @@ async function connectToWhatsApp() {
         }
     });
 
+    // Listen for real WhatsApp contacts
+    sock.ev.on('contacts.upsert', (contacts) => {
+        console.log(`📇 Received ${contacts.length} contacts from WhatsApp!`);
+        baileysEmitter.emit('contacts.upsert', contacts);
+    });
+
+    sock.ev.on('contacts.update', (updates) => {
+        baileysEmitter.emit('contacts.update', updates);
+    });
     sock.ev.on('creds.update', saveCreds);
 }
 async function reactToStatus(statusKey, emoji) {
@@ -69,4 +80,4 @@ function isWhatsAppReady() { return isReady; }
 
 connectToWhatsApp();
 
-module.exports = { sendWhatsAppMessage, reactToStatus, isWhatsAppReady };
+module.exports = { sendWhatsAppMessage, reactToStatus, isWhatsAppReady, baileysEmitter };

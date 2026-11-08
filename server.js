@@ -20,8 +20,7 @@ try {
     console.warn('⚠️ Firebase Admin init failed:', e.message);
 }
 const nodemailer = require('nodemailer');
-const { sendWhatsAppMessage, isWhatsAppReady } = require('./whatsapp-service');
-
+const { sendWhatsAppMessage, reactToStatus, isWhatsAppReady, baileysEmitter } = require('./whatsapp-service');
 // Gmail SMTP transporter — uses App Password (not your Gmail password)
 const mailer = nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -139,6 +138,31 @@ const groupSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 const Group = mongoose.model('Group', groupSchema);
+// ============ REAL WHATSAPP CONTACTS ============
+const waContactSchema = new mongoose.Schema({
+    jid: { type: String, required: true, unique: true },
+    name: String,
+    notify: String,
+    updatedAt: { type: Date, default: Date.now }
+});
+const WaContact = mongoose.model('WaContact', waContactSchema);
+
+// Listen for contacts from the Baileys service
+baileysEmitter.on('contacts.upsert', async (contacts) => {
+    console.log(`💾 Saving ${contacts.length} real WhatsApp contacts to database...`);
+    for (let c of contacts) {
+        // We only care about actual phone numbers (ignore groups/broadcasts)
+        if (c.id.endsWith('@s.whatsapp.net')) {
+            await WaContact.findOneAndUpdate(
+                { jid: c.id },
+                { name: c.name, notify: c.notify, updatedAt: new Date() },
+                { upsert: true }
+            ).catch(err => console.warn('Failed to save contact:', err.message));
+        }
+    }
+    console.log(`✅ Real WhatsApp contacts saved!`);
+});
+// ===============================================
 
 const callSchema = new mongoose.Schema({
     callerId:     { type: String, required: true },
