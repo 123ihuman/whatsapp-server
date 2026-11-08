@@ -732,6 +732,25 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
+// Update Profile (Name & About)
+app.post('/api/update-profile', async (req, res) => {
+    try {
+        const { userId, name, about } = req.body;
+        if (!userId || !name) return res.status(400).json({ error: 'Missing fields' });
+        
+        const updatedUser = await User.findByIdAndUpdate(
+            userId, 
+            { name: name, about: about }, 
+            { new: true }
+        );
+        
+        if (!updatedUser) return res.status(404).json({ error: 'User not found' });
+        io.emit('userAvatarUpdated'); // Tell other clients to refresh contacts
+        res.json(updatedUser);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // ---------- AVATAR UPLOAD ----------
 app.post('/api/avatar', upload.single('avatar'), async (req, res) => {
     try {

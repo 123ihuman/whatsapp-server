@@ -2045,6 +2045,33 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
             </button>
                         </div>
     </div>
+<!-- Edit Profile Screen -->
+<div class="new-group-screen" id="editProfileScreen">
+    <div class="ng-topbar">
+        <i class="fas fa-arrow-left" onclick="closeEditProfile()"></i>
+        <div class="ng-title">Profile info</div>
+        <i class="fas fa-check" onclick="saveProfile()" style="color:#00a884;"></i>
+    </div>
+    <div class="settings-profile">
+        <div class="settings-avatar" onclick="triggerAvatarUpload()" style="position:relative;">
+            <img src="" id="editProfileAvatarImg" style="display:none;">
+            <span id="editProfileAvatarLetter">U</span>
+            <div style="position:absolute; bottom:0; right:0; background:#00a884; color:white; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff;">
+                <i class="fas fa-camera"></i>
+            </div>
+        </div>
+    </div>
+    <div class="settings-list">
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
+            <label style="font-size:14px; color:#00a884; font-weight:600;">Name</label>
+            <input type="text" id="editProfileName" style="width:100%; border:none; border-bottom:2px solid #00a884; padding:8px 0; font-size:16px; outline:none; background:transparent;">
+        </div>
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
+            <label style="font-size:14px; color:#00a884; font-weight:600;">About</label>
+            <input type="text" id="editProfileAbout" style="width:100%; border:none; border-bottom:1px solid #ccc; padding:8px 0; font-size:16px; outline:none; background:transparent;">
+        </div>
+    </div>
+</div>
     <!-- ================= SETTINGS SCREEN ================= -->
     <div class="settings-screen" id="settingsScreen">
         <!-- HOME -->
@@ -2054,7 +2081,7 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
                 <div class="settings-topbar-actions">
                     <i class="fas fa-search" onclick="workInProgress('Search settings')"></i>
                     <i class="fas fa-qrcode" onclick="workInProgress('QR code')"></i>
-                    <i class="fas fa-pen" onclick="workInProgress('Edit profile')"></i>
+                    <i class="fas fa-pen" onclick="openEditProfile()"></i>
                 </div>
             </div>
             <div class="settings-profile">
@@ -5973,6 +6000,55 @@ function loadChatTheme() {
     }
 }
 /* ============ END CHAT THEME LOGIC ============ */
+function openEditProfile() {
+    document.getElementById('editProfileScreen').classList.add('active');
+    document.getElementById('editProfileName').value = getMyName();
+    document.getElementById('editProfileAbout').value = (currentUser && currentUser.about) ? currentUser.about : 'Hey there! I am using WhatsApp.';
+    
+    const img = document.getElementById('editProfileAvatarImg');
+    const letter = document.getElementById('editProfileAvatarLetter');
+    if (currentUser && currentUser.avatarUrl) {
+        img.src = currentUser.avatarUrl;
+        img.style.display = 'block';
+        letter.style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        letter.style.display = 'block';
+        letter.innerText = getMyName().charAt(0).toUpperCase();
+    }
+}
+
+function closeEditProfile() {
+    document.getElementById('editProfileScreen').classList.remove('active');
+}
+
+async function saveProfile() {
+    const newName = document.getElementById('editProfileName').value.trim();
+    const newAbout = document.getElementById('editProfileAbout').value.trim();
+    
+    if (!newName) return alert('Name cannot be empty');
+    
+    try {
+        const res = await fetch('/api/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: getMyId(), name: newName, about: newAbout })
+        });
+        
+        if (!res.ok) throw new Error('Failed to update');
+        
+        // Update local data
+        currentUser.name = newName;
+        currentUser.about = newAbout;
+        localStorage.setItem('wa_user', JSON.stringify(currentUser));
+        
+        closeEditProfile();
+        loadContacts(); // Refresh chat list to show new name
+        alert('Profile updated successfully!');
+    } catch (e) {
+        alert('Error updating profile: ' + e.message);
+    }
+}
 // --- SETTINGS NAVIGATION ---
 function openSettings(page) {
     playClickSound();
