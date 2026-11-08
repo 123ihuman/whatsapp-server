@@ -1714,6 +1714,14 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
 </head>
 <body>
 
+<!-- ================= DECOY / FAKE SCREEN ================= -->
+<div id="decoyScreen" style="display:none; position:fixed; inset:0; background:#fff; z-index:999999; flex-direction:column;">
+    <div id="decoyHeader" style="padding:20px; font-size:24px; font-weight:bold; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+        <span id="decoyAppName">My Notes</span>
+        <i class="fas fa-lock" style="font-size:16px; color:#ccc; cursor:pointer;" onclick="promptDecoyUnlock()"></i>
+    </div>
+    <div id="decoyList" style="flex-grow:1; overflow-y:auto;"></div>
+</div>
 <!-- ================= SPLASH SCREEN ================= -->
 <div id="wa_web_initial_startup" class="_apdl">
   <div class="_apdm">
@@ -1907,6 +1915,7 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
         <div class="menu-item" onclick="closeDrawer();openStarredScreen()">Starred</div>
         <div class="menu-item" onclick="closeDrawer();openUPI()">Payments</div>
         <div class="menu-item" onclick="closeDrawer();workInProgress('Read all')">Read all</div>
+<div class="menu-item" onclick="closeDrawer();openDecoyScreen()" style="color:#e67e22;"><i class="fas fa-user-secret"></i> Fake Screen (Decoy)</div>
         <div class="menu-item" onclick="closeDrawer();openSettings('home')">Settings <span class="settings-dot"></span></div>
     </div>
 
@@ -2275,7 +2284,11 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
                 <div class="settings-row" onclick="workInProgress('Groups')"><div class="settings-row-text">Groups<br><span class="settings-sub">Everyone</span></div></div>
                 <div class="settings-row" onclick="workInProgress('Live location')"><div class="settings-row-text">Live location</div></div>
                 <div class="settings-row" onclick="workInProgress('Calls')"><div class="settings-row-text">Calls<br><span class="settings-sub">Silence unknown callers</span></div></div>
-                                <div class="settings-row" onclick="toggleAppLockSetting()">
+                                <div class="settings-row" onclick="editDecoyScreen()">
+    <div class="settings-row-text">Fake Screen / Decoy<br><span class="settings-sub">Disguise the app with custom fake chats</span></div>
+    <div class="toggle on" style="background:#00a884;"><i class="fas fa-user-secret"></i></div>
+</div>
+<div class="settings-row" onclick="toggleAppLockSetting()">
                     <div class="settings-row-text">App lock<br><span class="settings-sub" id="appLockSub">Disabled</span></div>
                     <div class="toggle off" id="appLockToggle"><i class="fas fa-minus"></i></div>
                 </div>
@@ -6315,6 +6328,72 @@ function openSettings(page) {
 }
 
 function closeSettings() {
+// ============ DECOY SCREEN LOGIC ============
+function loadDecoyScreen() {
+    const defaultFakeChats = [
+        { name: "Grocery List", msg: "Milk, Bread, Eggs, Apples" },
+        { name: "Work Notes", msg: "Meeting at 3 PM with the marketing team." },
+        { name: "Ideas", msg: "Design a new logo for the project." }
+    ];
+    
+    const appName = localStorage.getItem('wa_decoy_name') || 'My Notes';
+    const fakeChats = JSON.parse(localStorage.getItem('wa_decoy_chats')) || defaultFakeChats;
+
+    document.getElementById('decoyAppName').innerText = appName;
+    const list = document.getElementById('decoyList');
+    list.innerHTML = '';
+    
+    fakeChats.forEach((c, i) => {
+        const el = document.createElement('div');
+        el.style.cssText = 'padding:15px 20px; border-bottom:1px solid #f0f0f0; cursor:pointer;';
+        el.innerHTML = `
+            <div style="font-size:16px; font-weight:600; color:#333; margin-bottom:4px;">${c.name}</div>
+            <div style="font-size:14px; color:#888;">${c.msg}</div>
+        `;
+        list.appendChild(el);
+    });
+}
+
+function openDecoyScreen() {
+    loadDecoyScreen();
+    const decoy = document.getElementById('decoyScreen');
+    decoy.style.display = 'flex';
+}
+
+function closeDecoyScreen() {
+    document.getElementById('decoyScreen').style.display = 'none';
+}
+
+function promptDecoyUnlock() {
+    const pin = prompt("Enter PIN to unlock:");
+    if (pin === null) return;
+    
+    // Use the existing App Lock PIN
+    sha256(pin).then(hash => {
+        const storedPin = localStorage.getItem('wa_app_pin');
+        if (storedPin && storedPin === hash) {
+            closeDecoyScreen();
+        } else {
+            alert("Incorrect PIN");
+        }
+    });
+}
+
+function editDecoyScreen() {
+    const newName = prompt("Enter Fake App Name (e.g. My Notes, Calculator):", localStorage.getItem('wa_decoy_name') || 'My Notes');
+    if (newName !== null) localStorage.setItem('wa_decoy_name', newName);
+
+    const newChats = prompt("Enter Fake Chats (Format: Name|Message, separated by comma)\nExample: Work|Meeting at 3pm, Grocery|Milk and eggs");
+    if (newChats !== null) {
+        const parsed = newChats.split(',').map(part => {
+            const split = part.split('|');
+            if (split.length >= 2) return { name: split[0].trim(), msg: split.slice(1).join('|').trim() };
+            return { name: part.trim(), msg: '...' };
+        });
+        localStorage.setItem('wa_decoy_chats', JSON.stringify(parsed));
+    }
+    alert("Fake Screen updated!");
+}
     playClickSound();
     document.getElementById('settingsScreen').classList.remove('active');
 }

@@ -109,9 +109,9 @@ const messageSchema = new mongoose.Schema({
     read:      { type: Boolean, default: false },
     readBy:    [{ userId: String, readAt: Date }], 
     pinned:    { type: Boolean, default: false },  
-    deleted:   { type: Boolean, default: sfalse },
-    scheduledAt: { type: Date, default: null }, // 👈 Cleaned this up for safety
-    sent:        { type: Boolean, default: true }, // 👈 Added the missing comma here
+        deleted:   { type: Boolean, default: false },
+    scheduledAt: { type: Date, default: null },
+    sent: { type: Boolean, default: true }, // 👈 COMMA ADDED HERE
     deletedByUser: { type: Boolean, default: false }, 
     createdAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, default: null, index: { expires: 0 } }
