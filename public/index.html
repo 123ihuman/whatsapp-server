@@ -4722,41 +4722,42 @@ async function doAuth() {
 }
 
 function afterLogin() {
-    // 1. Hide Login Screen
+    console.log("1. Starting Login...");
     document.getElementById('authScreen').style.display = 'none';
     
-    // 2. FORCE show the app container (THIS IS THE LINE YOU WERE MISSING)
+    // Force the app container to show
     const appContainer = document.querySelector('.app-container');
-    if (appContainer) {
-        appContainer.style.display = 'block';
-    }
-
-    // 3. Force background color to prevent pitch black
+    if (appContainer) appContainer.style.display = 'block';
+    
+    // Reset background
     document.body.classList.remove('dark-mode');
     document.body.style.background = '#d1d7db';
 
-    // 4. Show loading text immediately so you know it's working
+    // Show a loading message in the chat list
     const chatList = document.getElementById('chatList');
-    if (chatList) chatList.innerHTML = '<div style="text-align:center; padding:20px; color:#667781;">Loading chats...</div>';
+    if (chatList) chatList.innerHTML = '<div style="text-align:center; padding:20px; color:#667781;">Loading chats... Please wait.</div>';
 
-    // 5. Safely load data
-    setTimeout(() => {
-        try { loadContacts(); } catch(e) { console.error("Contacts error:", e); }
-        try { loadStatuses(); } catch(e) { console.error("Status error:", e); }
+    // Load data with a strict timeout so it NEVER freezes the UI
+    setTimeout(async () => {
+        console.log("2. Fetching Contacts...");
+        try {
+            await loadContacts();
+            console.log("3. Contacts Loaded Successfully!");
+        } catch(e) { 
+            console.error("Contacts error:", e); 
+            if (chatList) chatList.innerHTML = '<div style="text-align:center; padding:20px; color:#e74c3c;">Failed to load chats. Check connection.</div>';
+        }
     }, 100);
 
-    const name = (currentUser && currentUser.name) ? currentUser.name : 'User';
-    const id = (currentUser && currentUser.id) ? currentUser.id : null;
-
-    console.log('✅ Logged in as', name);
-    
-    if (socket.connected && id) {
-        socket.emit('userOnline', id);
-    }
-    
+    // Optional background tasks
+    try { loadStatuses(); } catch(e) {}
     try { requestNotificationPermission(); } catch(e) {}
-    setInterval(refreshUnread, 15000);
 
+    if (socket.connected && currentUser) {
+        socket.emit('userOnline', currentUser.id);
+    }
+
+    // Register push notifications (Moved safely INSIDE the function)
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
         try { window.Capacitor.Plugins.PushNotifications.register(); } catch(e) {}
     }
