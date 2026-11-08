@@ -4937,14 +4937,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = localStorage.getItem('wa_token');
     const u = localStorage.getItem('wa_user');
 
-    setTimeout(() => {
+        setTimeout(() => {
         try {
+            // If the app container is already visible, the Google Login finished first. Do nothing.
+            if (document.querySelector('.app-container').style.display === 'block') {
+                reveal();
+                return;
+            }
+
             if (t && u && u !== 'undefined') {
                 authToken = t;
                 currentUser = JSON.parse(u);
                 afterLogin();
             } else {
-                // Show Login Screen
                 document.getElementById('authScreen').style.display = 'flex';
                 document.querySelector('.app-container').style.display = 'none';
             }
@@ -4956,15 +4961,13 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('wa_user');
         } finally {
             reveal();
-            // FAILSAFE: If both screens are hidden, force the login screen
             if (document.getElementById('authScreen').style.display === 'none' && 
                 document.querySelector('.app-container').style.display === 'none') {
                 document.getElementById('authScreen').style.display = 'flex';
-                document.body.style.background = '#d1d7db'; // Kill the black screen
+                document.body.style.background = '#d1d7db';
             }
         }
     }, 1700);
-})();
 // --- WEBRTC SETUP ---
 // --- WEBRTC SETUP ---
 const rtcConfig = {
