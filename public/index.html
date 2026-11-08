@@ -4545,23 +4545,7 @@ function handleGoogleLogin(response) {
   });
 }
 
-// ============ FIREBASE PHONE LOGIN ============
-const firebaseConfig = {
-  apiKey: "AIzaSyD6vNyukv88IauDmdRe4yn_zW4k9pOq6rA",
-  authDomain: "whatsapp-pro-clone.firebaseapp.com",
-  projectId: "whatsapp-pro-clone",
-  storageBucket: "whatsapp-pro-clone.firebasestorage.app",
-  messagingSenderId: "1055260871265",
-  appId: "1:1055260871265:web:0197e495097cdc626db820"
-};
-
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
-let confirmationResult = null;
-
-function sendPhoneOTP() {
+async function sendPhoneOTP() {
     let phone = document.getElementById('authPhone').value.trim();
     
     if (phone.length !== 10) {
@@ -4573,25 +4557,28 @@ function sendPhoneOTP() {
     btn.innerText = "Sending...";
     btn.disabled = true;
 
-    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('authBtn', {
-        'size': 'invisible',
-        'callback': function(response) {}
-    });
-
-    firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier)
-        .then((result) => {
-            confirmationResult = result;
-            document.getElementById('phoneLoginBox').style.display = 'none';
-            document.getElementById('otpBox').style.display = 'block';
-            alert("OTP Sent to " + phone);
-        }).catch((error) => {
-            alert("Error: " + error.message);
-            btn.innerText = "Send OTP";
-            btn.disabled = false;
+    try {
+        const res = await fetch('/api/request-phone-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+
+        document.getElementById('phoneLoginBox').style.display = 'none';
+        document.getElementById('otpBox').style.display = 'block';
+        alert("OTP sent to your WhatsApp! Check your messages.");
+    } catch (error) {
+        alert("Error: " + error.message);
+        btn.innerText = "Send OTP";
+        btn.disabled = false;
+    }
 }
 
-function verifyPhoneOTP() {
+async function verifyPhoneOTP() {
+    let phone = document.getElementById('authPhone').value.trim();
+    phone = "+91" + phone; // Must match the format sent to backend
     const otp = document.getElementById('authOtp').value.trim();
     if (!otp) return alert("Enter the OTP");
     
@@ -4599,39 +4586,26 @@ function verifyPhoneOTP() {
     btn.innerText = "Verifying...";
     btn.disabled = true;
 
-    confirmationResult.confirm(otp).then((result) => {
-        // Get the Firebase ID Token
-        return result.user.getIdToken();
-    }).then((idToken) => {
-        // Send to our backend
-        fetch('/api/firebase-phone-login', {
+    try {
+        const res = await fetch('/api/verify-phone-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential: idToken })
-        })
-        .then(async r => {
-            const data = await r.json();
-            if (!r.ok) throw new Error(data.error || 'Server rejected token');
-            return data;
-        })
-        .then(data => {
-            localStorage.setItem('wa_token', data.token);
-            localStorage.setItem('wa_user', JSON.stringify(data.user));
-            currentUser = data.user;
-            authToken = data.token;
-            afterLogin();
-        }).catch((err) => {
-            alert("Backend error: " + err.message);
-            btn.innerText = "Verify OTP & Login";
-            btn.disabled = false;
+            body: JSON.stringify({ phone, otp })
         });
-    }).catch((error) => {
-        alert("Invalid OTP: " + error.message);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Invalid OTP');
+
+        localStorage.setItem('wa_token', data.token);
+        localStorage.setItem('wa_user', JSON.stringify(data.user));
+        currentUser = data.user;
+        authToken = data.token;
+        afterLogin();
+    } catch (error) {
+        alert("Error: " + error.message);
         btn.innerText = "Verify OTP & Login";
         btn.disabled = false;
-    });
+    }
 }
-// ============ END FIREBASE PHONE LOGIN ============
 function openMobileGoogleLogin() {
     const clientId = '399508571725-ooqfl87744gc5gln645vid2u7jnmbd9r.apps.googleusercontent.com';
     const redirectUri = 'https://whatsapp-server-e668.onrender.com/oauth'; // 👈 EXACT MATCH

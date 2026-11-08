@@ -510,6 +510,61 @@ app.post('/api/firebase-phone-login', async (req, res) => {
         res.status(401).json({ error: 'Invalid Firebase token' });
     }
 });
+// ============ WHATSAPP OTP LOGIN ============
+const otpStore = {}; // Temporary memory to store OTPs
+
+app.post('/api/request-phone-otp', async (req, res) => {
+    try {
+        const { phone } = req.body;
+        if (!phone) return res.status(400).json({ error: 'Phone number required' });
+
+        // Generate 6-digit OTP
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = Date.now() + 5 * 60 * 1000; // Valid for 5 minutes
+
+        otpStore[phone] = { code, expires };
+
+        // Send via Baileys
+        const result = await sendWhatsAppMessage(phone, `Your WhatsApp Pro login code is: *${code}*\n\nDo not share this code with anyone.`);
+        
+        if (!result.ok) throw new Error(result.error);
+        res.json({ ok: true, message: 'OTP sent via WhatsApp' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/verify-phone-otp', async (req, res) => {
+    try {
+        const { phone, otp } = req.body;
+        if (!phone || !otp) return res.status(400).json({ error: 'Phone and OTP required' });
+
+        const record = otpStore[phone];
+        if (!record) return res.status(400).json({ error: 'No OTP requested for this number' });
+        if (Date.now() > record.expires) return res.status(400).json({ error: 'OTP expired' });
+        if (record.code !== otp) return res.status(400).json({ error: 'Invalid OTP' });
+
+        // Success! Clear the OTP
+        delete otpStore[phone];
+
+        // Find or create user
+        let user = await User.findOne({ identifier: phone });
+        if (!user) {
+            user = await User.create({
+                identifier: phone,
+                name: 'User ' + phone.slice(-4), // Default name
+                password: 'whatsapp_otp_user'    // Dummy password
+            });
+        }
+
+        // Generate JWT Token
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });
+        res.json({ token, user: { id: user._id, name: user.name, identifier: user.identifier, avatarUrl: user.avatarUrl } });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ============ END WHATSAPP OTP LOGIN ============
 app.post('/api/google-login', async (req, res) => {
   try {
     const { credential } = req.body;
