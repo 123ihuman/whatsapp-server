@@ -1022,15 +1022,16 @@ io.on('connection', (socket) => {
         console.log(`Desktop waiting for QR session: ${sessionId}`);
     });
 
-    socket.on('joinRoom', (roomId) => {
+        socket.on('joinRoom', (roomId) => {
         socket.join(roomId);
-        socket.to(roomId).emit('userJoined', socket.id);
+        // Send the new user's socket ID to everyone else in the room
+        socket.to(roomId).emit('userJoined', { peerId: socket.id }); 
     });
 
-    socket.on('offer', (d) => socket.to(d.roomId).emit('offer', d));
+        socket.on('offer', (d) => socket.to(d.roomId).emit('offer', { ...d, senderId: socket.id }));
     socket.on('callType', (d) => socket.to(d.roomId).emit('callType', d));
-    socket.on('answer', (d) => socket.to(d.roomId).emit('answer', d));
-    socket.on('iceCandidate', (d) => socket.to(d.roomId).emit('iceCandidate', d));
+    socket.on('answer', (d) => socket.to(d.roomId).emit('answer', { ...d, senderId: socket.id }));
+    socket.on('iceCandidate', (d) => socket.to(d.roomId).emit('iceCandidate', { ...d, senderId: socket.id }));
     socket.on('endCall', (d) => socket.to(d.roomId).emit('endCall'));
 
     socket.on('typing', (data) => {

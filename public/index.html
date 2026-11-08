@@ -4918,7 +4918,7 @@ const rtcConfig = {
 
 let currentCallType = 'audio';
 let localStream = null;
-let peerConnection = null;
+let peerConnections = {}; // Holds multiple connections for group calls
 let currentRoomId = null;
 let offerSent = false;
 
@@ -4939,43 +4939,40 @@ async function getLocalMedia(wantVideo) {
     }
 }
 // --- CREATE PEER CONNECTION ---
-function createPeerConnection() {
-    peerConnection = new RTCPeerConnection(rtcConfig);
-
-    // Add our local tracks to the connection
+function createPeerConnection(peerId) {
+    const pc = new RTCPeerConnection(rtcConfig);
+    
     if (localStream) {
-        localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-        });
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
 
-    // When we receive remote video/audio, show it
-    peerConnection.ontrack = (event) => {
-        console.log('🎥 Received remote track:', event.track.kind);
+    pc.ontrack = (event) => {
+        console.log('🎥 Received remote track from:', peerId);
+        // For group calls, we would create a video element for each person.
+        // For now, we show the first person who connects.
         const remoteVideo = document.getElementById('remoteVideo');
-        if (remoteVideo.srcObject !== event.streams[0]) {
+        if (remoteVideo && !remoteVideo.srcObject) {
             remoteVideo.srcObject = event.streams[0];
         }
     };
 
-    // Send ICE candidates to the other peer via signaling server
-    peerConnection.onicecandidate = (event) => {
+    pc.onicecandidate = (event) => {
         if (event.candidate && currentRoomId) {
             socket.emit('iceCandidate', {
                 roomId: currentRoomId,
-                candidate: event.candidate
+                candidate: event.candidate,
+                targetId: peerId // Send only to this specific person
             });
         }
     };
 
-    peerConnection.onconnectionstatechange = () => {
-        console.log('🔗 Connection state:', peerConnection.connectionState);
-        document.getElementById('callStatus').innerText = peerConnection.connectionState;
+    pc.onconnectionstatechange = () => {
+        console.log(`🔗 Connection with ${peerId}:`, pc.connectionState);
     };
 
-    return peerConnection;
+    peerConnections[peerId] = pc;
+    return pc;
 }
-
 // --- START A CALL (caller side) ---
 async function startCall(name, color) {
     playClickSound();
@@ -5127,13 +5124,18 @@ function endCall() {
 
 function cleanupCall() {
     offerSent = false;
-    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+    // Close all peer connections in the group
+    for (let id in peerConnections) {
+        if (peerConnections[id]) peerConnections[id].close();
+    }
+    peerConnections = {}; // Reset
+
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
     document.getElementById('callScreen').style.display = 'none';
     document.getElementById('localVideo').srcObject = null;
     document.getElementById('remoteVideo').srcObject = null;
     currentRoomId = null;
-    console.log('📴 Call ended');
+    console.log('📴 Call ended and cleaned up');
 }
 
 // Hook up end button
@@ -5519,7 +5521,8 @@ async function logCall(direction) {
 // Voice call (audio only)
 async function doStartVoice(name, peerId) {
     playClickSound();
-    currentRoomId = 'call_' + [getMyId(), peerId].sort().join('_');
+    // If it's a group, use the group ID. If it's 1-on-1, use a standard room ID.
+currentRoomId = String(peerId).startsWith('group_') ? peerId : 'call_' + [getMyId(), peerId].sort().join('_');
     document.getElementById('callName').innerText = name;
     const av = document.getElementById('callAvatar');
     av.innerText = name.charAt(0).toUpperCase();
@@ -5539,7 +5542,8 @@ async function doStartVoice(name, peerId) {
 // Video call
 async function doStartVideo(name, peerId) {
     playClickSound();
-    currentRoomId = 'call_' + [getMyId(), peerId].sort().join('_');
+    // If it's a group, use the group ID. If it's 1-on-1, use a standard room ID.
+currentRoomId = String(peerId).startsWith('group_') ? peerId : 'call_' + [getMyId(), peerId].sort().join('_');
     document.getElementById('callName').innerText = name;
     const av = document.getElementById('callAvatar');
     av.innerText = name.charAt(0).toUpperCase();
@@ -7118,23 +7122,68 @@ socket.on('userAvatarUpdated', () => {
     loadContacts();
 });
 
-socket.on('offer', handleOffer);
-socket.on('answer', handleAnswer);
-socket.on('iceCandidate', handleIceCandidate);
+// --- MULTI-PEER CALL HANDLERS ---
+socket.on('offer', async (data) => {
+    console.log('📞 Incoming offer from:', data.senderId);
+    if (!localStream) {
+        const stream = await getLocalMedia(currentCallType === 'video');
+        if (!stream) return;
+        document.getElementById('localVideo').srcObject = stream;
+    }
+    
+    const pc = createPeerConnection(data.senderId);
+    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    
+    socket.emit('answer', { roomId: data.roomId, answer, targetId: data.senderId });
+});
+
+socket.on('answer', async (data) => {
+    console.log('✅ Got answer from:', data.senderId);
+    const pc = peerConnections[data.senderId];
+    if (pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    }
+});
+
+socket.on('iceCandidate', async (data) => {
+    const pc = peerConnections[data.senderId];
+    if (pc && data.candidate) {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+});
+
 socket.on('endCall', () => {
     console.log('📴 Peer ended the call');
     cleanupCall();
 });
-socket.on('userJoined', async () => {
-    if (offerSent) return;
-    offerSent = true;
-    console.log('👤 Other user joined the room — sending offer');
-    if (peerConnection) { peerConnection.close(); peerConnection = null; }
-    createPeerConnection();
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-                socket.emit('offer', { roomId: currentRoomId, offer, callType: currentCallType });
+
+// When a NEW user joins the room, send THEM an offer
+socket.on('userJoined', async (data) => {
+    const newPeerId = data.peerId;
+    console.log('👤 New user joined the room:', newPeerId);
+    
+    // Create a connection specifically for the new user
+    const pc = createPeerConnection(newPeerId);
+    
+    // Add local media
+    if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+
+    // Create and send offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    
+    socket.emit('offer', { 
+        roomId: currentRoomId, 
+        offer, 
+        callType: currentCallType,
+        targetId: newPeerId 
+    });
 });
+// --- END MULTI-PEER HANDLERS ---
 
 socket.on('newCallLogged', () => {
     if (document.getElementById('callsScreen').classList.contains('active')) loadCalls();
