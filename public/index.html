@@ -3534,9 +3534,9 @@ async function openChatWindow(name, userId) {
         return;
     } // 👈 ADD THIS CLOSING BRACE
 
-    // Load specific chat theme
+        // Load specific chat theme
     const specificTheme = localStorage.getItem('wa_chat_theme_' + activeRoomId);
-    const area = document.getElementById('messagesArea');
+    let area = document.getElementById('messagesArea'); // 👈 Change 'const' to 'let' HERE ONLY
     if (specificTheme) {
         const t = JSON.parse(specificTheme);
         if (t.type === 'color') { area.style.backgroundImage = 'none'; area.style.backgroundColor = t.value; }
