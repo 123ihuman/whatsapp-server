@@ -2060,17 +2060,23 @@ body.dark-mode .three-dot-menu .menu-item { color: #e9edef !important; border-co
                 <div class="recording-cancel" onclick="cancelVoiceRecording()">Cancel</div>
             </div>
 <i class="fas fa-font" onclick="openTextStylePicker()" style="cursor:pointer; color:#54656f; font-size:18px;" title="Text Style"></i>
-            <div class="input-wrapper">
+                        <div class="input-wrapper">
+                <!-- Moved "A" icon INSIDE the box -->
+                <i class="fas fa-font" onclick="openTextStylePicker()" style="cursor:pointer; color:#54656f; font-size:18px; margin-right:5px;" title="Text Style"></i>
+                
                 <i class="far fa-smile" onclick="toggleEmojiPicker(event)" style="cursor:pointer;"></i>
                 <input type="text" id="chatInput" placeholder="Message">
+                
+                <!-- Moved "Clock" icon INSIDE the box -->
+                <i class="fas fa-clock" onclick="scheduleMessage()" style="cursor:pointer; color:#54656f; font-size:18px;" title="Schedule Message"></i>
+                
                 <i class="fas fa-camera" onclick="openCamera()" title="Camera"></i>
                 <i class="fas fa-paperclip" onclick="openAttachSheet()" title="Attach" style="cursor:pointer;"></i>
                 <input type="file" id="chatFileInput" accept="image/*,video/*" capture="environment" style="display:none" onchange="sendMediaFile(event)">
             </div>
-                        <button class="send-btn" onclick="scheduleMessage()" style="background:#54656f; display:flex;" title="Schedule Message">
-    <i class="fas fa-clock"></i>
-</button>
-<button class="send-btn" id="sendBtn" onclick="sendSimMessage()" style="display:none;">
+            
+            <!-- Only Send and Mic remain outside -->
+            <button class="send-btn" id="sendBtn" onclick="sendSimMessage()" style="display:none;">
                 <i class="fas fa-paper-plane"></i>
             </button>
             <button class="send-btn mic-btn" id="micBtn" onclick="toggleVoiceRecording()">
